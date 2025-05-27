@@ -43,7 +43,7 @@ document.addEventListener("DOMContentLoaded", function () {
     stock: 200,
     status: "active",
     description: "Farm fresh eggs collected daily from free-range chickens (30 eggs per tray).",
-    image: "../Images/EggProduct.jpg",
+    image: "../Images/eggProduct.jpg",
     unit: "tray"
   },
   {
