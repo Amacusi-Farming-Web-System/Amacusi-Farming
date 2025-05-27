@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Amacusi Farming - Our Products</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- Existing Header (no additional styling) -->
+    <header>
+      <div class="logo">
+        <img src="AmacusiLogo.png" alt="Amacusi Trading Business" />
+      </div>
+      <nav>
+        <ul>
+          <li><a href="Main.html">Home</a></li>
+          <li><a href="products.html" class="active">Products</a></li>
+          <li><a href="about.html">About Us</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
+      </nav>
+      <div class="header-icons">
+        <a href="login.html" aria-label="Login">
+          <i class="fas fa-user"></i>
+        </a>
+        <a href="cart.html" aria-label="Shopping Cart">
+          <i class="fas fa-shopping-cart"></i>
+          <span class="cart-count">0</span>
+        </a>
+      </div>
+    </header>
+
+    <section class="products-hero">
+      <div class="container">
+        <h1>Our Farm Fresh Products</h1>
+        <p>
+          Premium quality livestock and meat products, raised with care in
+          Mpumalanga
+        </p>
+      </div>
+    </section>
+
+    <!-- Product Catalog Section -->
+    <main class="product-catalog">
+      <section class="catalog-intro">
+        <div class="category-filters">
+          <button class="filter-btn active" data-category="all">
+            All Products
+          </button>
+          <button class="filter-btn" data-category="poultry">Poultry</button>
+          <button class="filter-btn" data-category="beef">Beef</button>
+          <button class="filter-btn" data-category="pork">Pork</button>
+          <button class="filter-btn" data-category="eggs">Eggs</button>
+        </div>
+      </section>
+
+      <div class="product-grid" id="product-container">
+        <!-- Products loaded dynamically by products.js -->
+      </div>
+    </main>
+
+    <footer class="footer-with-bg">
+      <div class="footer-container">
+        <!-- Products -->
+        <div class="footer-section">
+          <h3>Our Products</h3>
+          <ul>
+            <li><a href="#">Poultry</a></li>
+            <li><a href="#">Beef</a></li>
+            <li><a href="#">Pork</a></li>
+            <li><a href="#">Eggs</a></li>
+            <li><a href="#">Goat Meat (Coming Soon)</a></li>
+          </ul>
+        </div>
+
+        <!-- Farming Practices -->
+        <div class="footer-section">
+          <h3>Our Farming</h3>
+          <ul>
+            <li><a href="#">Sustainable Practices</a></li>
+            <li><a href="#">Animal Welfare</a></li>
+            <li><a href="#">Quality Standards</a></li>
+            <li><a href="#">Farm Tour</a></li>
+          </ul>
+        </div>
+
+        <!-- Business -->
+        <div class="footer-section">
+          <h3>Business</h3>
+          <ul>
+            <li><a href="#">Wholesale Orders</a></li>
+            <li><a href="#">Export Inquiries</a></li>
+            <li><a href="#">Investor Relations</a></li>
+            <li><a href="#">Careers</a></li>
+          </ul>
+        </div>
+
+        <!-- Order Support -->
+        <div class="footer-section">
+          <h3>Order Support</h3>
+          <ul>
+            <li><a href="#">Delivery Information</a></li>
+            <li><a href="#">FAQ</a></li>
+            <li><a href="#">Contact Us</a></li>
+            <li><a href="#">Track Order</a></li>
+          </ul>
+        </div>
+
+        <!-- Contact -->
+        <div class="footer-section">
+          <h3>Connect With Us</h3>
+          <p><i class="fas fa-map-marker-alt"></i> Mpumalanga, South Africa</p>
+          <p><i class="fas fa-phone"></i> +27 12 345 6789</p>
+          <div class="social-icons">
+            <a href="#"><i class="fab fa-facebook"></i></a>
+            <a href="#"><i class="fab fa-instagram"></i></a>
+            <a href="#"><i class="fab fa-whatsapp"></i></a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Copyright -->
+      <div class="footer-bottom">
+        <p>© 2025 Amacusi Farming. All rights reserved.</p>
+        <ul>
+          <li><a href="#">Privacy Policy</a></li>
+          <li><a href="#">Terms of Service</a></li>
+          <li><a href="#">Ethical Farming Policy</a></li>
+        </ul>
+      </div>
+    </footer>
+
+    <script src="cart.js"></script>
+    <script src="admin/product.js"></script>
+    <script src="admin/products-display.js"></script>
+    <script src="../Amacusi-Farming/admin/products-display.js"></script>
+  </body>
+</html>

@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"name": "Amacusi",
+			"path": "../Amacusi"
+		}
+	],
+	"settings": {
+		"liveServer.settings.port": 5501
+	}
+}
