@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", function () {
       stock: 120,
       status: "active",
       description: "Humanely raised chickens with no antibiotics.",
-      image: "Images/ChickenProduct.jpg",
+      image: "../Images/ChickenProduct.jpg",
       unit: "chicken",
     },
       {
@@ -21,7 +21,7 @@ document.addEventListener("DOMContentLoaded", function () {
     stock: 85,
     status: "active",
     description: "Premium cuts from cattle raised on open pastures.",
-    image: "Images/BeefProduct.jpg",
+    image: "../Images/BeefProduct.jpg",
     unit: "kg"
   },
   {
@@ -32,7 +32,7 @@ document.addEventListener("DOMContentLoaded", function () {
     stock: 0,
     status: "inactive",
     description: "Tender pork from pigs raised in natural environments with no growth hormones.",
-    image: "Images/PorkProduct.jpg",
+    image: "../Images/PorkProduct.jpg",
     unit: "kg"
   },
   {
@@ -43,7 +43,7 @@ document.addEventListener("DOMContentLoaded", function () {
     stock: 200,
     status: "active",
     description: "Farm fresh eggs collected daily from free-range chickens (30 eggs per tray).",
-    image: "Images/EggProduct.jpg",
+    image: "../Images/EggProduct.jpg",
     unit: "tray"
   },
   {
@@ -54,7 +54,7 @@ document.addEventListener("DOMContentLoaded", function () {
     stock: 50,
     status: "active",
     description: "Lean and flavorful goat meat from free-range goats.",
-    image: "Images/GoatProduct.jpg",
+    image: "../Images/GoatProduct.jpg",
     unit: "kg"
   },
   ];
