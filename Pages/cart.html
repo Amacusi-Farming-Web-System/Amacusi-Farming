@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Amacusi Farming - Your Cart</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <link rel="stylesheet" href="../css/cart.css" />
+  </head>
+  <body>
+    <header>
+      <div class="logo">
+        <img src="../Images/AmacusiLogo.png" alt="Amacusi Trading Business" />
+      </div>
+      <nav>
+        <ul>
+          <li><a href="index.html">Home</a></li>
+          <li><a href="products.html">Products</a></li>
+          <li><a href="about.html">About Us</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
+      </nav>
+      <div class="header-icons">
+        <a href="login.html" aria-label="Login">
+          <i class="fas fa-user"></i>
+        </a>
+        <a href="cart.html" aria-label="Shopping Cart">
+          <i class="fas fa-shopping-cart"></i>
+          <span class="cart-count">0</span>
+        </a>
+      </div>
+    </header>
+
+    <main class="cart-container">
+      <h1>Your Shopping Cart</h1>
+
+      <div class="cart-content">
+        <section class="cart-items">
+          <div class="cart-header">
+            <h2>Items</h2>
+            <span id="item-count">0 items</span>
+          </div>
+
+          <div id="cart-items-list">
+            <!-- Cart items will be dynamically inserted here -->
+            <div class="empty-cart">
+              <i class="fas fa-shopping-cart"></i>
+              <p>Your cart is empty</p>
+              <a href="products.html" class="btn">Browse Products</a>
+            </div>
+          </div>
+        </section>
+
+        <section class="cart-summary">
+          <h2>Order Summary</h2>
+
+          <div class="summary-details">
+            <div class="summary-row">
+              <span>Subtotal</span>
+              <span id="subtotal">R0.00</span>
+            </div>
+            <div class="summary-row">
+              <span>Delivery Fee</span>
+              <span id="delivery">R0.00</span>
+            </div>
+            <div class="summary-row total">
+              <span>Total</span>
+              <span id="total">R0.00</span>
+            </div>
+          </div>
+
+          <button id="checkout-btn" class="btn btn-primary" disabled>
+            Proceed to Checkout
+          </button>
+
+          <div class="delivery-info">
+            <h3>Delivery Information</h3>
+            <p>
+              Free delivery on all poultry orders over R500. Other products have
+              a standard R50 delivery fee.
+            </p>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- Checkout Modal -->
+    <div id="checkout-modal" class="modal">
+      <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h2>Complete Your Order</h2>
+
+        <form id="checkout-form">
+          <div class="form-group">
+            <label for="name">Full Name</label>
+            <input type="text" id="name" required />
+          </div>
+
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" required />
+          </div>
+
+          <div class="form-group">
+            <label for="phone">Phone Number</label>
+            <input type="tel" id="phone" required />
+          </div>
+
+          <div class="form-group">
+            <label for="address">Delivery Address</label>
+            <textarea id="address" rows="3" required></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="payment">Payment Method</label>
+            <select id="payment" required>
+              <option value="">Select payment method</option>
+              <option value="card">Credit/Debit Card</option>
+              <option value="eft">EFT/Bank Transfer</option>
+              <option value="cash">Cash on Delivery</option>
+            </select>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-outline" id="cancel-checkout">
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-primary">Place Order</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Add these modals to your cart.html before closing body tag -->
+
+    <!-- Address Modal -->
+    <div id="address-modal" class="modal">
+      <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h2>Delivery Address</h2>
+        <form id="address-form">
+          <div class="form-group">
+            <label for="street">Street Address</label>
+            <input type="text" id="street" required />
+          </div>
+          <div class="form-group">
+            <label for="city">City/Town</label>
+            <input type="text" id="city" required />
+          </div>
+          <div class="form-group">
+            <label for="province">Province</label>
+            <select id="province" required>
+              <option value="">Select Province</option>
+              <option value="mpumalanga">Mpumalanga (Free Delivery)</option>
+              <option value="other">Other Province (R100 Delivery Fee)</option>
+            </select>
+          </div>
+          <button type="button" id="confirm-address" class="btn">
+            Confirm Address
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Payment Modal -->
+    <div id="payment-modal" class="modal">
+      <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h2>Payment Method</h2>
+
+        <div class="order-summary">
+          <p>
+            <strong>Delivery Address:</strong>
+            <span id="delivery-address-display"></span>
+          </p>
+          <p><strong>Subtotal:</strong> <span id="payment-subtotal"></span></p>
+          <p>
+            <strong>Delivery Fee:</strong>
+            <span id="delivery-fee-display"></span>
+          </p>
+          <p><strong>Total:</strong> <span id="payment-total"></span></p>
+        </div>
+
+        <div class="payment-methods">
+          <div class="payment-method" data-method="cash">
+            <i class="fas fa-money-bill-wave"></i>
+            <span>Cash on Delivery</span>
+          </div>
+          <div class="payment-method" data-method="eft">
+            <i class="fas fa-university"></i>
+            <span>EFT/Bank Transfer</span>
+          </div>
+        </div>
+
+        <button id="confirm-payment" class="btn">Complete Order</button>
+      </div>
+    </div>
+
+    <!-- Card Details Modal (add this after payment modal) -->
+    <div id="card-modal" class="modal">
+      <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h2>Enter Card Details</h2>
+        <div class="card-form">
+          <div class="card-icons">
+            <i class="fab fa-cc-visa"></i>
+            <i class="fab fa-cc-mastercard"></i>
+            <i class="fab fa-cc-amex"></i>
+          </div>
+          <div class="form-group">
+            <label for="card-number">Card Number</label>
+            <input
+              type="text"
+              id="card-number"
+              placeholder="1234 5678 9012 3456"
+              maxlength="19"
+            />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="card-expiry">Expiry Date</label>
+              <input
+                type="text"
+                id="card-expiry"
+                placeholder="MM/YY"
+                maxlength="5"
+              />
+            </div>
+            <div class="form-group">
+              <label for="card-cvc">CVC</label>
+              <input
+                type="text"
+                id="card-cvc"
+                placeholder="123"
+                maxlength="3"
+              />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="card-name">Name on Card</label>
+            <input type="text" id="card-name" placeholder="John Doe" />
+          </div>
+          <button id="submit-card" class="btn">Pay Now</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Order Confirmation Modal -->
+    <div id="confirmation-modal" class="modal">
+      <div class="modal-content confirmation">
+        <div class="confirmation-icon">
+          <i class="fas fa-check-circle"></i>
+        </div>
+        <h2>Order Confirmed!</h2>
+        <p>
+          Thank you for your order. We'll contact you shortly to confirm
+          delivery details.
+        </p>
+        <p>Order ID: <span id="order-id"></span></p>
+        <div class="confirmation-actions">
+          <a href="products.html" class="btn">Continue Shopping</a>
+          <a href="index.html" class="btn btn-outline">Back to Home</a>
+        </div>
+      </div>
+    </div>
+
+    <footer class="footer-with-bg">
+      <!-- Your existing footer content -->
+    </footer>
+
+    <script src="../cart.js"></script>
+  </body>
+</html>
