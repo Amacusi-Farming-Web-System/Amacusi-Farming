@@ -296,7 +296,7 @@ nav a:hover {
 /* HERO SECTION */
 .about-hero {
   background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
-    url("Images/aboutBack\ \(2\).jpg") center/cover;
+    url("../Images/aboutBack\ \(2\).jpg") center/cover;
   color: white;
   text-align: center;
   padding: 100px 20px;
