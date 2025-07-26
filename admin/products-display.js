@@ -13,6 +13,7 @@ document.addEventListener("DOMContentLoaded", function () {
       image: "../Images/ChickenProduct.jpg",
       unit: "chicken",
     },
+<<<<<<< HEAD
     {
       id: 2,
       name: "Grass-Fed Beef",
@@ -59,6 +60,52 @@ document.addEventListener("DOMContentLoaded", function () {
       // image: "../Images/GoatProduct.jpg",
       unit: "kg",
     },
+=======
+      {
+    id: 2,
+    name: "Grass-Fed Beef",
+    category: "beef",
+    price: 120,
+    stock: 85,
+    status: "active",
+    description: "Premium cuts from cattle raised on open pastures.",
+    image: "../Images/BeefProduct.jpg",
+    unit: "kg"
+  },
+  {
+    id: 3,
+    name: "Natural Pork",
+    category: "pork",
+    price: 95,
+    stock: 0,
+    status: "inactive",
+    description: "Tender pork from pigs raised in natural environments with no growth hormones.",
+    image: "../Images/PorkProduct.jpg",
+    unit: "kg"
+  },
+  {
+    id: 4,
+    name: "Farm Fresh Eggs",
+    category: "eggs",
+    price: 45,
+    stock: 200,
+    status: "active",
+    description: "Farm fresh eggs collected daily from free-range chickens (30 eggs per tray).",
+    image: "../Images/eggProduct.jpg",
+    unit: "tray"
+  },
+  {
+    id: 5,
+    name: "Organic Goat Meat",
+    category: "goat",
+    price: 110,
+    stock: 50,
+    status: "active",
+    description: "Lean and flavorful goat meat from free-range goats.",
+    image: "../Images/GoatProduct.jpg",
+    unit: "kg"
+  },
+>>>>>>> 8a2a93704a31e44d985305c0a05796cb702c2024
   ];
 
   // Initialize
