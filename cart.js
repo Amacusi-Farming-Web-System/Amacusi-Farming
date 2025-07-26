@@ -25,12 +25,139 @@ const confirmPaymentBtn = document.getElementById("confirm-payment");
 // Meat categories that need live/butchered selection
 const MEAT_CATEGORIES = ["poultry", "beef", "pork"];
 
-// Initialize cart
+// Debug function
+function debugCart() {
+  console.log("Current Cart:", cart);
+  console.log(
+    "Products in Storage:",
+    JSON.parse(localStorage.getItem("amacusi-products"))
+  );
+}
+
+function initializeProducts() {
+  if (!localStorage.getItem("amacusi-products")) {
+    const defaultProducts = [
+      {
+        id: 1,
+        name: "Free Range Chicken",
+        category: "poultry",
+        price: 85,
+        stock: 120,
+        status: "active",
+        description: "Humanely raised chickens with no antibiotics.",
+        image: "../images/ChickenProduct.jpg",
+        unit: "chicken",
+      },
+      {
+        id: 2,
+        name: "Grass-Fed Beef",
+        category: "beef",
+        price: 120,
+        stock: 85,
+        status: "active",
+        description: "Premium cuts from cattle raised on open pastures.",
+        image: "../images/BeefProduct.jpg",
+        unit: "kg",
+      },
+      {
+        id: 4,
+        name: "Farm Fresh Eggs",
+        category: "eggs",
+        price: 45,
+        stock: 200,
+        status: "active",
+        description:
+          "Farm fresh eggs collected daily from free-range chickens.",
+        image: "../images/eggProduct.jpg",
+        unit: "tray",
+      },
+      {
+        id: 3,
+        name: "Natural Pork",
+        category: "pork",
+        price: 95,
+        stock: 60,
+        status: "active",
+        description:
+          "Tender pork from pigs raised in natural environments with no growth hormones.",
+        image: "../images/porkProduct.jpg",
+        unit: "kg",
+      },
+    ];
+    localStorage.setItem("amacusi-products", JSON.stringify(defaultProducts));
+  }
+}
+
+// Initialize cart with products check
 function initCart() {
+  initializeProducts(); // Add this line
   renderCartItems();
   updateCartSummary();
   updateHeaderCartCount();
   setupModals();
+}
+
+// Update renderCartItems to handle missing products
+function renderCartItems() {
+  const products = JSON.parse(localStorage.getItem("amacusi-products")) || [];
+  console.log("Available products:", products);
+
+  if (cart.length === 0) {
+    cartItemsList.innerHTML = `
+      <div class="empty-cart">
+        <i class="fas fa-shopping-cart"></i>
+        <p>Your cart is empty</p>
+        <a href="products.html" class="btn">Browse Products</a>
+      </div>
+    `;
+    return;
+  }
+
+  let itemsHTML = "";
+  let validCartItems = [];
+
+  cart.forEach((item) => {
+    const product = products.find((p) => p.id === item.id);
+    if (product) {
+      validCartItems.push(item);
+      itemsHTML += `
+        <div class="cart-item" data-id="${item.id}">
+          <img src="${product.image}" alt="${
+        product.name
+      }" class="cart-item-img">
+          <div class="cart-item-details">
+            <h3 class="cart-item-name">${product.name}</h3>
+            <span class="cart-item-price">R${product.price.toFixed(2)}</span>
+            <div class="quantity-control">
+              <button class="quantity-btn minus" data-id="${item.id}">-</button>
+              <span>${item.quantity}</span>
+              <button class="quantity-btn plus" data-id="${item.id}">+</button>
+            </div>
+            <button class="remove-item" data-id="${item.id}">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </div>
+      `;
+    }
+  });
+
+  // Update cart with only valid items
+  if (validCartItems.length !== cart.length) {
+    cart = validCartItems;
+    localStorage.setItem("amacusi-cart", JSON.stringify(cart));
+  }
+
+  cartItemsList.innerHTML =
+    itemsHTML ||
+    `
+    <div class="error">
+      <p>Some items are no longer available</p>
+      <a href="products.html" class="btn">Continue Shopping</a>
+    </div>
+  `;
+
+  // Add event listeners...
 }
 
 // Setup modal event listeners
@@ -45,6 +172,7 @@ function setupModals() {
     btn.addEventListener("click", () => {
       addressModal.style.display = "none";
       paymentModal.style.display = "none";
+      document.getElementById("card-modal").style.display = "none";
     });
   });
 
@@ -66,8 +194,10 @@ function setupModals() {
   confirmPaymentBtn.addEventListener("click", processPayment);
 }
 
-// Render cart items with live/butchered options
+// Render cart items with error handling
 function renderCartItems() {
+  debugCart();
+
   if (cart.length === 0) {
     cartItemsList.innerHTML = `
       <div class="empty-cart">
@@ -81,36 +211,42 @@ function renderCartItems() {
 
   let itemsHTML = "";
   const products = JSON.parse(localStorage.getItem("amacusi-products")) || [];
+  console.log("Available products:", products);
 
   cart.forEach((item) => {
     const product = products.find((p) => p.id === item.id);
     if (product) {
       const showTypeOptions = MEAT_CATEGORIES.includes(item.category);
+      const unit = product.unit || "item";
 
       itemsHTML += `
         <div class="cart-item" data-id="${item.id}">
-          <img src="${product.image}" alt="${
+          <img src="${product.image || "../images/default-product.jpg"}" alt="${
         product.name
       }" class="cart-item-img">
           <div class="cart-item-details">
             <h3 class="cart-item-name">${product.name}</h3>
             <span class="cart-item-category">${product.category}</span>
-            <span class="cart-item-price">R${product.price.toFixed(2)} / ${
-        product.unit
-      }</span>
+            <span class="cart-item-price">R${product.price.toFixed(
+              2
+            )} / ${unit}</span>
             
             ${
               showTypeOptions
                 ? `
               <div class="type-selection">
                 <label>
-                  <input type="radio" name="type-${item.id}" value="butchered" 
-                    ${item.type === "butchered" ? "checked" : ""}>
+                  <input type="radio" name="type-${
+                    item.id
+                  }" value="butchered" ${
+                    item.type === "butchered" ? "checked" : ""
+                  }>
                   Butchered
                 </label>
                 <label>
-                  <input type="radio" name="type-${item.id}" value="live" 
-                    ${item.type === "live" ? "checked" : ""}>
+                  <input type="radio" name="type-${item.id}" value="live" ${
+                    item.type === "live" ? "checked" : ""
+                  }>
                   Live
                 </label>
               </div>
@@ -132,6 +268,8 @@ function renderCartItems() {
           </div>
         </div>
       `;
+    } else {
+      console.warn(`Product with id ${item.id} not found in products list`);
     }
   });
 
@@ -209,11 +347,8 @@ function processPayment() {
   const paymentMethod = selectedMethod.dataset.method;
 
   if (paymentMethod === "eft") {
-    // Hide payment modal and show card modal
     paymentModal.style.display = "none";
     document.getElementById("card-modal").style.display = "block";
-
-    // Initialize card input formatting
     initCardInputs();
   } else {
     completeOrder(paymentMethod);
@@ -222,7 +357,6 @@ function processPayment() {
 
 // Initialize card input formatting
 function initCardInputs() {
-  // Format card number
   document
     .getElementById("card-number")
     .addEventListener("input", function (e) {
@@ -232,7 +366,6 @@ function initCardInputs() {
         .trim();
     });
 
-  // Format expiry date
   document
     .getElementById("card-expiry")
     .addEventListener("input", function (e) {
@@ -241,7 +374,6 @@ function initCardInputs() {
         .replace(/(\d{2})(\d)/, "$1/$2");
     });
 
-  // Handle card form submission
   document
     .getElementById("submit-card")
     .addEventListener("click", function (e) {
@@ -249,14 +381,6 @@ function initCardInputs() {
       if (validateCardDetails()) {
         completeOrder("eft");
       }
-    });
-
-  // Close card modal
-  document
-    .querySelector("#card-modal .close-modal")
-    .addEventListener("click", function () {
-      document.getElementById("card-modal").style.display = "none";
-      paymentModal.style.display = "block";
     });
 }
 
@@ -292,115 +416,6 @@ function validateCardDetails() {
   return true;
 }
 
-// Show card details form
-function showCardDetailsForm() {
-  paymentModal.style.display = "none";
-
-  const cardFormHTML = `
-    <div id="card-modal" class="modal">
-      <div class="modal-content">
-        <span class="close-modal">&times;</span>
-        <h2>Enter Card Details</h2>
-        <div class="card-form">
-          <div class="card-icons">
-            <i class="fab fa-cc-visa"></i>
-            <i class="fab fa-cc-mastercard"></i>
-            <i class="fab fa-cc-amex"></i>
-          </div>
-          <div class="form-group">
-            <label for="card-number">Card Number</label>
-            <input type="text" id="card-number" placeholder="1234 5678 9012 3456" maxlength="19">
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="card-expiry">Expiry Date</label>
-              <input type="text" id="card-expiry" placeholder="MM/YY" maxlength="5">
-            </div>
-            <div class="form-group">
-              <label for="card-cvc">CVC</label>
-              <input type="text" id="card-cvc" placeholder="123" maxlength="3">
-            </div>
-          </div>
-          <div class="form-group">
-            <label for="card-name">Name on Card</label>
-            <input type="text" id="card-name" placeholder="John Doe">
-          </div>
-          <button id="submit-card" class="btn">Pay Now</button>
-        </div>
-      </div>
-    </div>
-  `;
-
-  const cardModal = document.createElement("div");
-  cardModal.innerHTML = cardFormHTML;
-  document.body.appendChild(cardModal);
-
-  // Format card number
-  document
-    .getElementById("card-number")
-    .addEventListener("input", function (e) {
-      this.value = this.value
-        .replace(/\s/g, "")
-        .replace(/(\d{4})/g, "$1 ")
-        .trim();
-    });
-
-  // Format expiry date
-  document
-    .getElementById("card-expiry")
-    .addEventListener("input", function (e) {
-      this.value = this.value
-        .replace(/\D/g, "")
-        .replace(/(\d{2})(\d)/, "$1/$2");
-    });
-
-  // Close modal
-  cardModal.querySelector(".close-modal").addEventListener("click", () => {
-    cardModal.remove();
-    paymentModal.style.display = "block";
-  });
-
-  // Submit card
-  document.getElementById("submit-card").addEventListener("click", () => {
-    if (validateCardDetails()) {
-      cardModal.remove();
-      completeOrder("eft");
-    }
-  });
-}
-
-// Validate card details
-function validateCardDetails() {
-  const cardNumber = document
-    .getElementById("card-number")
-    .value.replace(/\s/g, "");
-  const expiry = document.getElementById("card-expiry").value;
-  const cvc = document.getElementById("card-cvc").value;
-  const name = document.getElementById("card-name").value.trim();
-
-  if (!cardNumber || cardNumber.length < 16) {
-    alert("Please enter a valid card number");
-    return false;
-  }
-
-  if (!expiry || expiry.length < 5) {
-    alert("Please enter a valid expiry date (MM/YY)");
-    return false;
-  }
-
-  if (!cvc || cvc.length < 3) {
-    alert("Please enter a valid CVC");
-    return false;
-  }
-
-  if (!name) {
-    alert("Please enter the name on card");
-    return false;
-  }
-
-  return true;
-}
-
 // Complete order
 function completeOrder(paymentMethod) {
   const street = document.getElementById("street").value;
@@ -408,7 +423,6 @@ function completeOrder(paymentMethod) {
   const province = document.getElementById("province").value;
   const deliveryFee = province === "mpumalanga" ? 0 : 100;
 
-  // Create order object
   const order = {
     id: Date.now(),
     date: new Date().toISOString(),
@@ -421,16 +435,12 @@ function completeOrder(paymentMethod) {
     status: "completed",
   };
 
-  // Save order
   const orders = JSON.parse(localStorage.getItem("amacusi-orders")) || [];
   orders.push(order);
   localStorage.setItem("amacusi-orders", JSON.stringify(orders));
 
-  // Clear cart
   cart = [];
   localStorage.setItem("amacusi-cart", JSON.stringify(cart));
-
-  // Show confirmation
   showOrderConfirmation(order);
 }
 
@@ -611,6 +621,35 @@ function formatProvince(province) {
 function formatPaymentMethod(method) {
   return method === "cash" ? "Cash on Delivery" : "EFT/Bank Transfer";
 }
+
+// Global addToCart function
+window.addToCart = function (
+  productId,
+  productName,
+  productPrice,
+  productCategory
+) {
+  const existingItem = cart.find(
+    (item) => item.id === productId && item.type === undefined
+  );
+
+  if (existingItem) {
+    existingItem.quantity += 1;
+  } else {
+    cart.push({
+      id: productId,
+      name: productName,
+      price: parseFloat(productPrice),
+      quantity: 1,
+      category: productCategory,
+      type: MEAT_CATEGORIES.includes(productCategory) ? "butchered" : undefined,
+    });
+  }
+
+  localStorage.setItem("amacusi-cart", JSON.stringify(cart));
+  updateHeaderCartCount();
+  showCartNotification(productName);
+};
 
 // Initialize on page load
 if (document.getElementById("cart-items-list")) {

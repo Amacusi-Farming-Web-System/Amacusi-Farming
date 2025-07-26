@@ -18,18 +18,20 @@ document.addEventListener("DOMContentLoaded", function () {
   const activeProductsEl = document.getElementById("active-products");
   const outofstockProductsEl = document.getElementById("outofstock-products");
 
-  // Product data (in a real app, this would come from a database)
+  // Product data with unit properties added
+  // In your product.js file, update the products array to:
   let products = JSON.parse(localStorage.getItem("amacusi-products")) || [
     {
       id: 1,
       name: "Free Range Chicken",
-      category: "poultry",
+      category: "Chicken",
       price: 85,
       stock: 120,
       status: "active",
       description:
         "Humanely raised chickens with no antibiotics, perfect for restaurants.",
       image: "../images/ChickenProduct.jpg",
+      unit: "chicken",
     },
     {
       id: 2,
@@ -40,28 +42,19 @@ document.addEventListener("DOMContentLoaded", function () {
       status: "active",
       description: "Premium cuts from cattle raised on open pastures.",
       image: "../images/BeefProduct.jpg",
+      unit: "kg",
     },
     {
       id: 3,
       name: "Natural Pork",
-      category: "pork",
+      category: "Pork",
       price: 95,
-      stock: 0,
-      status: "inactive",
+      stock: 60, // Changed from 0 to make it available
+      status: "active", // Changed from "inactive"
       description:
         "Tender pork from pigs raised in natural environments with no growth hormones.",
       image: "../images/porkProduct.jpg",
-    },
-    {
-      id: 4,
-      name: "Farm Fresh Eggs",
-      category: "eggs",
-      price: 45,
-      stock: 200,
-      status: "active",
-      description:
-        "Farm fresh eggs collected daily from free-range chickens (30 eggs per tray).",
-      image: "../images/eggProduct.jpg",
+      unit: "kg",
     },
   ];
 
@@ -98,43 +91,39 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (products.length === 0) {
       productsList.innerHTML = `
-                <tr>
-                    <td colspan="7" style="text-align: center; padding: 30px;">
-                        No products found. Click "Add Product" to get started.
-                    </td>
-                </tr>
-            `;
+        <tr>
+          <td colspan="7" style="text-align: center; padding: 30px;">
+            No products found. Click "Add Product" to get started.
+          </td>
+        </tr>
+      `;
       return;
     }
 
     products.forEach((product) => {
       const tr = document.createElement("tr");
       tr.innerHTML = `
-                <td><img src="${product.image}" alt="${
+        <td><img src="${product.image}" alt="${
         product.name
       }" class="product-img"></td>
-                <td>${product.name}</td>
-                <td>${formatCategory(product.category)}</td>
-                <td>R${product.price.toFixed(2)}</td>
-                <td>${product.stock}</td>
-                <td><span class="status status-${
-                  product.status
-                }">${formatStatus(product.status)}</span></td>
-                <td>
-                    <div class="action-btns">
-                        <button class="btn btn-outline edit-btn" data-id="${
-                          product.id
-                        }">
-                            <i class="fas fa-edit"></i> Edit
-                        </button>
-                        <button class="btn btn-danger delete-btn" data-id="${
-                          product.id
-                        }">
-                            <i class="fas fa-trash"></i> Delete
-                        </button>
-                    </div>
-                </td>
-            `;
+        <td>${product.name}</td>
+        <td>${formatCategory(product.category)}</td>
+        <td>R${product.price.toFixed(2)}</td>
+        <td>${product.stock}</td>
+        <td><span class="status status-${product.status}">${formatStatus(
+        product.status
+      )}</span></td>
+        <td>
+          <div class="action-btns">
+            <button class="btn btn-outline edit-btn" data-id="${product.id}">
+              <i class="fas fa-edit"></i> Edit
+            </button>
+            <button class="btn btn-danger delete-btn" data-id="${product.id}">
+              <i class="fas fa-trash"></i> Delete
+            </button>
+          </div>
+        </td>
+      `;
 
       productsList.appendChild(tr);
     });
@@ -259,13 +248,13 @@ document.addEventListener("DOMContentLoaded", function () {
       stock,
       description,
       status,
+      unit: document.getElementById("productUnit")?.value || "item", // Add unit field
     };
 
-    // Handle image (in a real app, you would upload this to a server)
+    // Handle image
     if (productImage.files[0]) {
       productData.image = URL.createObjectURL(productImage.files[0]);
     } else if (isEditing) {
-      // Keep existing image if editing and no new image was selected
       const existingProduct = products.find((p) => p.id === currentProductId);
       if (existingProduct) {
         productData.image = existingProduct.image;
@@ -273,23 +262,18 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (isEditing) {
-      // Update existing product
       const index = products.findIndex((p) => p.id === currentProductId);
       if (index !== -1) {
         products[index] = { ...products[index], ...productData };
       }
     } else {
-      // Add new product
       const newId =
         products.length > 0 ? Math.max(...products.map((p) => p.id)) + 1 : 1;
       productData.id = newId;
       products.push(productData);
     }
 
-    // Save to localStorage (in a real app, this would be an API call)
     localStorage.setItem("amacusi-products", JSON.stringify(products));
-
-    // Update UI
     renderProducts();
     updateStatistics();
     closeProductModal();
