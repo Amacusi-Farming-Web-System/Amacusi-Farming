@@ -1,7 +1,26 @@
-// Initialize cart from localStorage
-let cart = JSON.parse(localStorage.getItem("amacusi-cart")) || [];
+// cart.js
+import {
+  auth,
+  db,
+  isUserRegistered,
+  onAuthStateChanged,
+} from "./logInScripts/firebaseAuth.js";
+import {
+  doc,
+  onSnapshot,
+  updateDoc,
+  deleteDoc,
+  setDoc,
+  serverTimestamp,
+  writeBatch,
+  increment,
+  getDoc,
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
+// ======================
 // DOM Elements
+// ======================
 const cartItemsList = document.getElementById("cart-items-list");
 const itemCountElement = document.getElementById("item-count");
 const subtotalElement = document.getElementById("subtotal");
@@ -9,649 +28,700 @@ const deliveryElement = document.getElementById("delivery");
 const totalElement = document.getElementById("total");
 const checkoutBtn = document.getElementById("checkout-btn");
 const cartCountElements = document.querySelectorAll(".cart-count");
+const guestCheckoutMessage = document.getElementById("guest-checkout-message");
+const pickupCheckbox = document.getElementById("pickup-checkbox");
 
-// Modal elements
+// Modals
 const addressModal = document.getElementById("address-modal");
 const paymentModal = document.getElementById("payment-modal");
-const addressForm = document.getElementById("address-form");
-const confirmAddressBtn = document.getElementById("confirm-address");
+const confirmationModal = document.getElementById("confirmation-modal");
+const orderIdSpan = document.getElementById("order-id");
+
+// New DOM elements for payment modal
 const deliveryAddressDisplay = document.getElementById(
   "delivery-address-display"
 );
+const paymentSubtotalDisplay = document.getElementById("payment-subtotal");
 const deliveryFeeDisplay = document.getElementById("delivery-fee-display");
-const paymentMethods = document.querySelectorAll(".payment-method");
-const confirmPaymentBtn = document.getElementById("confirm-payment");
+const paymentTotalDisplay = document.getElementById("payment-total");
 
-// Meat categories that need live/butchered selection
-const MEAT_CATEGORIES = ["poultry", "beef", "pork"];
+// ======================
+// State
+// ======================
+let cart = [];
+let unsubscribeCart = null;
+let deliveryFee = 0;
+let userId = null;
+let selectedAddress = { street: "", city: "", province: "" };
 
-// Debug function
-function debugCart() {
-  console.log("Current Cart:", cart);
-  console.log(
-    "Products in Storage:",
-    JSON.parse(localStorage.getItem("amacusi-products"))
+// ======================
+// Helper Functions
+// ======================
+function generateOrderNumber() {
+  const numbers = "0123456789";
+  let result = "AM"; // Fixed prefix
+
+  // Generate 6 random numbers
+  for (let i = 0; i < 6; i++) {
+    result += numbers.charAt(Math.floor(Math.random() * numbers.length));
+  }
+
+  return result;
+}
+
+function showToast(message, type = "error") {
+  const toast = document.createElement("div");
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add("show");
+    setTimeout(() => {
+      toast.classList.remove("show");
+      setTimeout(() => document.body.removeChild(toast), 300);
+    }, 3000);
+  }, 100);
+}
+
+function setLoadingState(loading) {
+  const buttons = document.querySelectorAll("button");
+  buttons.forEach((btn) => {
+    if (loading) {
+      btn.disabled = true;
+      btn.classList.add("loading");
+    } else {
+      btn.disabled = false;
+      btn.classList.remove("loading");
+    }
+  });
+}
+
+async function requireLoggedInAndRegistered(redirectToSignUp = true) {
+  if (!auth.currentUser) {
+    if (redirectToSignUp) {
+      showToast("You must sign in to continue.");
+      window.location.href = `../pages/signUp.html?redirect=${encodeURIComponent(
+        window.location.href
+      )}`;
+    }
+    throw new Error("not_authenticated");
+  }
+
+  const uid = auth.currentUser.uid;
+  const registered = await isUserRegistered(uid);
+  if (!registered) {
+    if (redirectToSignUp) {
+      showToast("Please sign in with Google to continue.");
+      window.location.href = `../pages/signUp.html?redirect=${encodeURIComponent(
+        window.location.href
+      )}`;
+    }
+    throw new Error("not_registered");
+  }
+
+  userId = uid;
+  return true;
+}
+
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    userId = user.uid;
+    if (guestCheckoutMessage) guestCheckoutMessage.style.display = "none";
+    if (checkoutBtn) checkoutBtn.disabled = false;
+  } else {
+    userId = null;
+    if (guestCheckoutMessage) guestCheckoutMessage.style.display = "block";
+    if (checkoutBtn) checkoutBtn.disabled = false;
+  }
+});
+
+// ======================
+// Cart Management
+// ======================
+async function initCart() {
+  const cartId = sessionStorage.getItem("cartId");
+  if (!cartId) {
+    renderEmptyCart();
+    return;
+  }
+
+  unsubscribeCart = onSnapshot(
+    doc(db, "carts", cartId),
+    (docSnap) => {
+      try {
+        if (docSnap.exists()) {
+          cart = docSnap.data().items || [];
+          renderCartItems();
+          updateCartSummary();
+        } else {
+          cart = [];
+          renderEmptyCart();
+        }
+      } catch (err) {
+        console.error("Cart snapshot handler failed:", err);
+        showToast("Failed to load cart. Please refresh.");
+      }
+    },
+    (err) => {
+      console.error("Cart snapshot error:", err);
+      showToast("Failed to load cart. Please refresh.");
+    }
   );
 }
 
-function initializeProducts() {
-  if (!localStorage.getItem("amacusi-products")) {
-    const defaultProducts = [
-      {
-        id: 1,
-        name: "Free Range Chicken",
-        category: "poultry",
-        price: 85,
-        stock: 120,
-        status: "active",
-        description: "Humanely raised chickens with no antibiotics.",
-        image: "../images/ChickenProduct.jpg",
-        unit: "chicken",
-      },
-      {
-        id: 2,
-        name: "Grass-Fed Beef",
-        category: "beef",
-        price: 120,
-        stock: 85,
-        status: "active",
-        description: "Premium cuts from cattle raised on open pastures.",
-        image: "../images/BeefProduct.jpg",
-        unit: "kg",
-      },
-      {
-        id: 4,
-        name: "Farm Fresh Eggs",
-        category: "eggs",
-        price: 45,
-        stock: 200,
-        status: "active",
-        description:
-          "Farm fresh eggs collected daily from free-range chickens.",
-        image: "../images/eggProduct.jpg",
-        unit: "tray",
-      },
-      {
-        id: 3,
-        name: "Natural Pork",
-        category: "pork",
-        price: 95,
-        stock: 60,
-        status: "active",
-        description:
-          "Tender pork from pigs raised in natural environments with no growth hormones.",
-        image: "../images/porkProduct.jpg",
-        unit: "kg",
-      },
-    ];
-    localStorage.setItem("amacusi-products", JSON.stringify(defaultProducts));
-  }
-}
-
-// Initialize cart with products check
-function initCart() {
-  initializeProducts(); // Add this line
-  renderCartItems();
-  updateCartSummary();
-  updateHeaderCartCount();
-  setupModals();
-}
-
-// Update renderCartItems to handle missing products
-function renderCartItems() {
-  const products = JSON.parse(localStorage.getItem("amacusi-products")) || [];
-  console.log("Available products:", products);
-
-  if (cart.length === 0) {
-    cartItemsList.innerHTML = `
-      <div class="empty-cart">
-        <i class="fas fa-shopping-cart"></i>
-        <p>Your cart is empty</p>
-        <a href="products.html" class="btn">Browse Products</a>
-      </div>
-    `;
-    return;
-  }
-
-  let itemsHTML = "";
-  let validCartItems = [];
-
-  cart.forEach((item) => {
-    const product = products.find((p) => p.id === item.id);
-    if (product) {
-      validCartItems.push(item);
-      itemsHTML += `
-        <div class="cart-item" data-id="${item.id}">
-          <img src="${product.image}" alt="${
-        product.name
-      }" class="cart-item-img">
-          <div class="cart-item-details">
-            <h3 class="cart-item-name">${product.name}</h3>
-            <span class="cart-item-price">R${product.price.toFixed(2)}</span>
-            <div class="quantity-control">
-              <button class="quantity-btn minus" data-id="${item.id}">-</button>
-              <span>${item.quantity}</span>
-              <button class="quantity-btn plus" data-id="${item.id}">+</button>
-            </div>
-            <button class="remove-item" data-id="${item.id}">
-              <i class="fas fa-trash"></i>
-            </button>
-          </div>
-        </div>
-      `;
-    }
-  });
-
-  // Update cart with only valid items
-  if (validCartItems.length !== cart.length) {
-    cart = validCartItems;
-    localStorage.setItem("amacusi-cart", JSON.stringify(cart));
-  }
-
-  cartItemsList.innerHTML =
-    itemsHTML ||
-    `
-    <div class="error">
-      <p>Some items are no longer available</p>
-      <a href="products.html" class="btn">Continue Shopping</a>
+function renderEmptyCart() {
+  cartItemsList.innerHTML = `
+    <div class="empty-cart">
+      <i class="fas fa-shopping-cart"></i>
+      <p>Your cart is empty</p>
+      <a href="products.html" class="btn">Browse Products</a>
     </div>
   `;
-
-  // Add event listeners...
+  updateHeaderCartCount(0);
 }
 
-// Setup modal event listeners
-function setupModals() {
-  if (!checkoutBtn) return;
-
-  checkoutBtn.addEventListener("click", () => {
-    addressModal.style.display = "block";
-  });
-
-  document.querySelectorAll(".close-modal").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      addressModal.style.display = "none";
-      paymentModal.style.display = "none";
-      document.getElementById("card-modal").style.display = "none";
-    });
-  });
-
-  confirmAddressBtn.addEventListener("click", () => {
-    if (validateAddress()) {
-      addressModal.style.display = "none";
-      paymentModal.style.display = "block";
-      updatePaymentModal();
-    }
-  });
-
-  paymentMethods.forEach((method) => {
-    method.addEventListener("click", function () {
-      paymentMethods.forEach((m) => m.classList.remove("selected"));
-      this.classList.add("selected");
-    });
-  });
-
-  confirmPaymentBtn.addEventListener("click", processPayment);
-}
-
-// Render cart items with error handling
 function renderCartItems() {
-  debugCart();
-
-  if (cart.length === 0) {
-    cartItemsList.innerHTML = `
-      <div class="empty-cart">
-        <i class="fas fa-shopping-cart"></i>
-        <p>Your cart is empty</p>
-        <a href="products.html" class="btn">Browse Products</a>
-      </div>
-    `;
+  if (!cart || cart.length === 0) {
+    renderEmptyCart();
     return;
   }
 
-  let itemsHTML = "";
-  const products = JSON.parse(localStorage.getItem("amacusi-products")) || [];
-  console.log("Available products:", products);
-
-  cart.forEach((item) => {
-    const product = products.find((p) => p.id === item.id);
-    if (product) {
-      const showTypeOptions = MEAT_CATEGORIES.includes(item.category);
-      const unit = product.unit || "item";
-
-      itemsHTML += `
-        <div class="cart-item" data-id="${item.id}">
-          <img src="${product.image || "../images/default-product.jpg"}" alt="${
-        product.name
-      }" class="cart-item-img">
-          <div class="cart-item-details">
-            <h3 class="cart-item-name">${product.name}</h3>
-            <span class="cart-item-category">${product.category}</span>
-            <span class="cart-item-price">R${product.price.toFixed(
-              2
-            )} / ${unit}</span>
-            
-            ${
-              showTypeOptions
-                ? `
-              <div class="type-selection">
-                <label>
-                  <input type="radio" name="type-${
-                    item.id
-                  }" value="butchered" ${
-                    item.type === "butchered" ? "checked" : ""
-                  }>
-                  Butchered
-                </label>
-                <label>
-                  <input type="radio" name="type-${item.id}" value="live" ${
-                    item.type === "live" ? "checked" : ""
-                  }>
-                  Live
-                </label>
-              </div>
-            `
-                : ""
-            }
-          </div>
-          <div class="cart-item-actions">
-            <div class="quantity-control">
-              <button class="quantity-btn minus" data-id="${item.id}">-</button>
-              <input type="number" class="quantity-input" value="${
-                item.quantity
-              }" min="1" data-id="${item.id}">
-              <button class="quantity-btn plus" data-id="${item.id}">+</button>
-            </div>
-            <button class="remove-item" data-id="${item.id}">
-              <i class="fas fa-trash"></i>
-            </button>
-          </div>
-        </div>
-      `;
-    } else {
-      console.warn(`Product with id ${item.id} not found in products list`);
-    }
-  });
-
-  cartItemsList.innerHTML = itemsHTML;
-
-  document.querySelectorAll(".quantity-btn").forEach((btn) => {
-    btn.addEventListener("click", handleQuantityChange);
-  });
-
-  document.querySelectorAll(".remove-item").forEach((btn) => {
-    btn.addEventListener("click", removeItemFromCart);
-  });
-
-  document
-    .querySelectorAll('.type-selection input[type="radio"]')
-    .forEach((radio) => {
-      radio.addEventListener("change", handleTypeChange);
-    });
-}
-
-// Handle live/butchered selection change
-function handleTypeChange(e) {
-  const id = parseInt(e.target.name.split("-")[1]);
-  const type = e.target.value;
-
-  const itemIndex = cart.findIndex((item) => item.id === id);
-  if (itemIndex !== -1) {
-    cart[itemIndex].type = type;
-    saveCart();
-    updateCartSummary();
-  }
-}
-
-// Validate address form
-function validateAddress() {
-  const street = document.getElementById("street").value.trim();
-  const city = document.getElementById("city").value.trim();
-  const province = document.getElementById("province").value;
-
-  if (!street || !city || !province) {
-    alert("Please fill in all address fields");
-    return false;
-  }
-  return true;
-}
-
-// Update payment modal with address and fee info
-function updatePaymentModal() {
-  const street = document.getElementById("street").value;
-  const city = document.getElementById("city").value;
-  const province = document.getElementById("province").value;
-
-  const deliveryFee = province === "mpumalanga" ? 0 : 100;
-  const total = calculateSubtotal() + deliveryFee;
-
-  deliveryAddressDisplay.textContent = `${street}, ${city}, ${formatProvince(
-    province
-  )}`;
-  deliveryFeeDisplay.textContent =
-    deliveryFee === 0 ? "FREE" : `R${deliveryFee.toFixed(2)}`;
-  document.getElementById(
-    "payment-subtotal"
-  ).textContent = `R${calculateSubtotal().toFixed(2)}`;
-  document.getElementById("payment-total").textContent = `R${total.toFixed(2)}`;
-}
-
-// Process payment
-function processPayment() {
-  const selectedMethod = document.querySelector(".payment-method.selected");
-  if (!selectedMethod) {
-    alert("Please select a payment method");
-    return;
-  }
-
-  const paymentMethod = selectedMethod.dataset.method;
-
-  if (paymentMethod === "eft") {
-    paymentModal.style.display = "none";
-    document.getElementById("card-modal").style.display = "block";
-    initCardInputs();
-  } else {
-    completeOrder(paymentMethod);
-  }
-}
-
-// Initialize card input formatting
-function initCardInputs() {
-  document
-    .getElementById("card-number")
-    .addEventListener("input", function (e) {
-      this.value = this.value
-        .replace(/\s/g, "")
-        .replace(/(\d{4})/g, "$1 ")
-        .trim();
-    });
-
-  document
-    .getElementById("card-expiry")
-    .addEventListener("input", function (e) {
-      this.value = this.value
-        .replace(/\D/g, "")
-        .replace(/(\d{2})(\d)/, "$1/$2");
-    });
-
-  document
-    .getElementById("submit-card")
-    .addEventListener("click", function (e) {
-      e.preventDefault();
-      if (validateCardDetails()) {
-        completeOrder("eft");
-      }
-    });
-}
-
-// Validate card details
-function validateCardDetails() {
-  const cardNumber = document
-    .getElementById("card-number")
-    .value.replace(/\s/g, "");
-  const expiry = document.getElementById("card-expiry").value;
-  const cvc = document.getElementById("card-cvc").value;
-  const name = document.getElementById("card-name").value.trim();
-
-  if (!cardNumber || cardNumber.length < 16) {
-    alert("Please enter a valid 16-digit card number");
-    return false;
-  }
-
-  if (!expiry || expiry.length < 5 || !expiry.includes("/")) {
-    alert("Please enter a valid expiry date in MM/YY format");
-    return false;
-  }
-
-  if (!cvc || cvc.length < 3) {
-    alert("Please enter a valid 3-digit CVC");
-    return false;
-  }
-
-  if (!name) {
-    alert("Please enter the name on card");
-    return false;
-  }
-
-  return true;
-}
-
-// Complete order
-function completeOrder(paymentMethod) {
-  const street = document.getElementById("street").value;
-  const city = document.getElementById("city").value;
-  const province = document.getElementById("province").value;
-  const deliveryFee = province === "mpumalanga" ? 0 : 100;
-
-  const order = {
-    id: Date.now(),
-    date: new Date().toISOString(),
-    items: [...cart],
-    address: { street, city, province },
-    subtotal: calculateSubtotal(),
-    deliveryFee,
-    total: calculateSubtotal() + deliveryFee,
-    paymentMethod,
-    status: "completed",
-  };
-
-  const orders = JSON.parse(localStorage.getItem("amacusi-orders")) || [];
-  orders.push(order);
-  localStorage.setItem("amacusi-orders", JSON.stringify(orders));
-
-  cart = [];
-  localStorage.setItem("amacusi-cart", JSON.stringify(cart));
-  showOrderConfirmation(order);
-}
-
-// Show order confirmation
-function showOrderConfirmation(order) {
-  const itemsList = order.items
+  cartItemsList.innerHTML = cart
     .map(
       (item) => `
-    <div class="order-item">
-      <span>${item.name} (${item.type || "standard"})</span>
-      <span>${item.quantity} × R${getProductById(item.id).price.toFixed(
-        2
-      )}</span>
+    <div class="cart-item" data-id="${item.id}">
+      <img src="${item.imageUrl || "../images/default-product.jpg"}" alt="${
+        item.name
+      }" class="cart-item-img" />
+      <div class="cart-item-details">
+        <h3 class="cart-item-name">${item.name}</h3>
+        <span class="cart-item-price">R${item.price.toFixed(2)}</span>
+      </div>
+      <div class="cart-item-actions">
+        <div class="quantity-control">
+          <button class="quantity-btn minus" data-id="${item.id}">-</button>
+          <input type="number" class="quantity-input" value="${
+            item.quantity
+          }" min="1" data-id="${item.id}" />
+          <button class="quantity-btn plus" data-id="${item.id}">+</button>
+        </div>
+        <button class="remove-item" data-id="${
+          item.id
+        }" aria-label="Remove item">
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
     </div>
   `
     )
     .join("");
 
-  const confirmationHTML = `
-    <div class="confirmation-modal">
-      <div class="confirmation-content">
-        <div class="confirmation-header">
-          <i class="fas fa-check-circle"></i>
-          <h2>Order #${order.id} Confirmed!</h2>
-        </div>
-        
-        <div class="order-summary">
-          <h3>Order Summary</h3>
-          <div class="order-items">
-            ${itemsList}
-          </div>
-          <div class="order-totals">
-            <div class="order-row">
-              <span>Subtotal:</span>
-              <span>R${order.subtotal.toFixed(2)}</span>
-            </div>
-            <div class="order-row">
-              <span>Delivery Fee:</span>
-              <span>${
-                order.deliveryFee === 0
-                  ? "FREE"
-                  : `R${order.deliveryFee.toFixed(2)}`
-              }</span>
-            </div>
-            <div class="order-row total">
-              <span>Total:</span>
-              <span>R${order.total.toFixed(2)}</span>
-            </div>
-          </div>
-        </div>
+  attachCartItemEvents();
+}
 
-        <div class="order-details">
-          <div class="detail-group">
-            <h4>Delivery Address</h4>
-            <p>${order.address.street}, ${order.address.city}, ${formatProvince(
-    order.address.province
-  )}</p>
-          </div>
-          <div class="detail-group">
-            <h4>Payment Method</h4>
-            <p>${formatPaymentMethod(order.paymentMethod)}</p>
-            ${
-              order.paymentMethod === "eft"
-                ? '<p><i class="fas fa-lock"></i> Payment processed securely</p>'
-                : ""
-            }
-          </div>
-        </div>
+// ======================
+// Cart Item Events
+// ======================
+function attachCartItemEvents() {
+  // Quantity buttons
+  document.querySelectorAll(".quantity-btn").forEach((btn) => {
+    btn.addEventListener("click", handleQuantityChange);
+  });
 
-        <button id="close-confirmation" class="btn">Continue Shopping</button>
-      </div>
-    </div>
-  `;
-
-  const confirmationEl = document.createElement("div");
-  confirmationEl.innerHTML = confirmationHTML;
-  document.body.appendChild(confirmationEl);
-
-  document
-    .getElementById("close-confirmation")
-    .addEventListener("click", () => {
-      window.location.href = "products.html";
+  // Quantity inputs
+  document.querySelectorAll(".quantity-input").forEach((input) => {
+    input.addEventListener("input", (e) => {
+      e.target.value = Math.max(1, parseInt(e.target.value) || 1);
+      handleQuantityInputChange(e);
     });
-}
+  });
 
-// Update cart summary
-function updateCartSummary() {
-  const subtotal = calculateSubtotal();
-  const province = document.getElementById("province")?.value || "other";
-  const deliveryFee = province === "mpumalanga" ? 0 : 100;
-  const total = subtotal + deliveryFee;
-
-  itemCountElement.textContent = `${getTotalQuantity()} ${
-    getTotalQuantity() === 1 ? "item" : "items"
-  }`;
-  subtotalElement.textContent = `R${subtotal.toFixed(2)}`;
-  deliveryElement.textContent =
-    deliveryFee === 0 ? "FREE" : `R${deliveryFee.toFixed(2)}`;
-  totalElement.textContent = `R${total.toFixed(2)}`;
-  checkoutBtn.disabled = cart.length === 0;
-}
-
-// Helper functions
-function calculateSubtotal() {
-  return cart.reduce((sum, item) => {
-    const product = getProductById(item.id);
-    return sum + (product ? product.price * item.quantity : 0);
-  }, 0);
-}
-
-function getTotalQuantity() {
-  return cart.reduce((sum, item) => sum + item.quantity, 0);
-}
-
-function getProductById(id) {
-  const products = JSON.parse(localStorage.getItem("amacusi-products")) || [];
-  return products.find((product) => product.id === id);
-}
-
-function updateHeaderCartCount() {
-  const totalQuantity = getTotalQuantity();
-  cartCountElements.forEach((element) => {
-    element.textContent = totalQuantity;
+  // Remove buttons
+  document.querySelectorAll(".remove-item").forEach((btn) => {
+    if (btn) {
+      btn.addEventListener("click", removeItemFromCart);
+    }
   });
 }
 
-function showCartNotification(productName) {
-  const notification = document.createElement("div");
-  notification.className = "cart-notification";
-  notification.innerHTML = `
-    <i class="fas fa-check-circle"></i>
-    ${productName} added to cart
-  `;
-  document.body.appendChild(notification);
+async function handleQuantityChange(e) {
+  try {
+    await requireLoggedInAndRegistered();
+    setLoadingState(true);
 
-  setTimeout(() => notification.classList.add("show"), 10);
-  setTimeout(() => {
-    notification.classList.remove("show");
-    setTimeout(() => document.body.removeChild(notification), 300);
-  }, 3000);
-}
-
-function handleQuantityChange(e) {
-  const id = parseInt(e.currentTarget.dataset.id);
-  const isPlus = e.currentTarget.classList.contains("plus");
-
-  const itemIndex = cart.findIndex((item) => item.id === id);
-  if (itemIndex !== -1) {
-    if (isPlus) {
-      cart[itemIndex].quantity += 1;
-    } else if (cart[itemIndex].quantity > 1) {
-      cart[itemIndex].quantity -= 1;
+    const button = e.target.closest("button");
+    if (!button || !button.dataset.id) {
+      console.error("Quantity change: could not resolve button or dataset.id");
+      return;
     }
 
-    saveCart();
-    updateCartSummary();
-    updateHeaderCartCount();
+    const id = button.dataset.id;
+    const idx = cart.findIndex((i) => i.id === id);
+    if (idx === -1) return;
+
+    // Check stock for increase
+    if (button.classList.contains("plus")) {
+      const productRef = doc(db, "products", id);
+      const productSnap = await getDoc(productRef);
+      const availableStock = productSnap.exists()
+        ? productSnap.data().stock
+        : 0;
+
+      if (cart[idx].quantity >= availableStock) {
+        showToast(`Only ${availableStock} available in stock`);
+        return;
+      }
+      cart[idx].quantity++;
+    } else {
+      cart[idx].quantity = Math.max(1, cart[idx].quantity - 1);
+    }
+
+    await updateCartOnServer();
+  } catch (err) {
+    console.error("Quantity change failed:", err);
+    if (
+      err.message !== "not_authenticated" &&
+      err.message !== "not_registered"
+    ) {
+      showToast("Failed to update quantity. Please try again.");
+    }
+  } finally {
+    setLoadingState(false);
   }
 }
 
-function removeItemFromCart(e) {
-  const id = parseInt(e.currentTarget.dataset.id);
-  cart = cart.filter((item) => item.id !== id);
-  saveCart();
-  renderCartItems();
-  updateCartSummary();
+async function handleQuantityInputChange(e) {
+  try {
+    await requireLoggedInAndRegistered();
+    setLoadingState(true);
+
+    const id = e.target.dataset.id;
+    const idx = cart.findIndex((i) => i.id === id);
+    if (idx === -1) return;
+
+    const newQuantity = parseInt(e.target.value) || 1;
+
+    // Check stock
+    const productRef = doc(db, "products", id);
+    const productSnap = await getDoc(productRef);
+    const availableStock = productSnap.exists() ? productSnap.data().stock : 0;
+
+    if (newQuantity > availableStock) {
+      showToast(`Only ${availableStock} available in stock`);
+      e.target.value = availableStock;
+      cart[idx].quantity = availableStock;
+    } else {
+      cart[idx].quantity = newQuantity;
+    }
+
+    await updateCartOnServer();
+  } catch (err) {
+    console.error("Quantity input failed:", err);
+    renderCartItems();
+    if (
+      err.message !== "not_authenticated" &&
+      err.message !== "not_registered"
+    ) {
+      showToast("Failed to update quantity. Please try again.");
+    }
+  } finally {
+    setLoadingState(false);
+  }
+}
+
+async function removeItemFromCart(e) {
+  let button = e.target.closest("button") || e.currentTarget;
+
+  if (!button || !button.dataset.id) {
+    console.error("Could not find button or ID for removal");
+    return;
+  }
+
+  try {
+    await requireLoggedInAndRegistered();
+    setLoadingState(true);
+
+    const id = button.dataset.id;
+    cart = cart.filter((item) => item.id !== id);
+    await updateCartOnServer();
+  } catch (err) {
+    console.error("Remove item failed:", err);
+    if (
+      err.message !== "not_authenticated" &&
+      err.message !== "not_registered"
+    ) {
+      showToast("Failed to remove item. Please try again.");
+    }
+  } finally {
+    setLoadingState(false);
+  }
+}
+
+// ======================
+// Update cart in Firestore
+// ======================
+async function updateCartOnServer() {
+  const cartId = sessionStorage.getItem("cartId");
+  if (!cartId) {
+    console.warn("No cartId in sessionStorage; skipping update.");
+    return;
+  }
+
+  try {
+    await updateDoc(doc(db, "carts", cartId), { items: cart });
+    updateCartSummary();
+  } catch (err) {
+    console.error("Failed to update cart:", err);
+    showToast("Unable to update cart. Please try again.");
+  }
+}
+
+// ======================
+// Cart Summary
+// ======================
+function calculateSubtotal() {
+  return cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+}
+
+function updateCartSummary() {
+  const subtotal = calculateSubtotal();
+  const isPickup = pickupCheckbox?.checked || false;
+  const province = document.getElementById("province")?.value || "other";
+
+  deliveryFee = isPickup
+    ? 0
+    : province.toLowerCase() === "mpumalanga"
+    ? 0
+    : 100;
+
+  itemCountElement.textContent = `${cart.reduce(
+    (sum, item) => sum + item.quantity,
+    0
+  )} items`;
+  subtotalElement.textContent = `R${subtotal.toFixed(2)}`;
+  deliveryElement.textContent =
+    deliveryFee === 0 ? "FREE" : `R${deliveryFee.toFixed(2)}`;
+  totalElement.textContent = `R${(subtotal + deliveryFee).toFixed(2)}`;
+
   updateHeaderCartCount();
 }
 
-function saveCart() {
-  localStorage.setItem("amacusi-cart", JSON.stringify(cart));
+function updateHeaderCartCount(count) {
+  const total =
+    typeof count === "number"
+      ? count
+      : cart.reduce((sum, item) => sum + item.quantity, 0);
+  cartCountElements.forEach((el) => (el.textContent = total));
 }
 
-function formatProvince(province) {
-  return province === "mpumalanga" ? "Mpumalanga" : "Other Province";
+// ======================
+// Stock Validation
+// ======================
+async function validateStockBeforeCheckout() {
+  try {
+    const stockChecks = cart.map(async (item) => {
+      const productRef = doc(db, "products", item.id);
+      const productSnap = await getDoc(productRef);
+      return {
+        id: item.id,
+        name: item.name,
+        available: productSnap.exists() ? productSnap.data().stock : 0,
+        requested: item.quantity,
+      };
+    });
+
+    const results = await Promise.all(stockChecks);
+    const outOfStockItems = results.filter(
+      (item) => item.requested > item.available
+    );
+
+    if (outOfStockItems.length > 0) {
+      const message = outOfStockItems
+        .map((item) => `${item.name} (only ${item.available} available)`)
+        .join(", ");
+      showToast(`Some items are out of stock: ${message}`);
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("Stock validation failed:", error);
+    showToast("Failed to check product availability. Please try again.");
+    return false;
+  }
 }
 
-function formatPaymentMethod(method) {
-  return method === "cash" ? "Cash on Delivery" : "EFT/Bank Transfer";
-}
+// ======================
+// Checkout Flow
+// ======================
+function setupSecureCheckout() {
+  if (!checkoutBtn) return;
 
-// Global addToCart function
-window.addToCart = function (
-  productId,
-  productName,
-  productPrice,
-  productCategory
-) {
-  const existingItem = cart.find(
-    (item) => item.id === productId && item.type === undefined
-  );
+  checkoutBtn.addEventListener("click", async (e) => {
+    e.preventDefault();
 
-  if (existingItem) {
-    existingItem.quantity += 1;
-  } else {
-    cart.push({
-      id: productId,
-      name: productName,
-      price: parseFloat(productPrice),
-      quantity: 1,
-      category: productCategory,
-      type: MEAT_CATEGORIES.includes(productCategory) ? "butchered" : undefined,
+    try {
+      setLoadingState(true);
+
+      if (!auth.currentUser) {
+        showToast("Please sign in to proceed to checkout.");
+        window.location.href = `../pages/signUp.html?redirect=${encodeURIComponent(
+          window.location.href
+        )}`;
+        return;
+      }
+
+      const uid = auth.currentUser.uid;
+      const registered = await isUserRegistered(uid);
+      if (!registered) {
+        showToast("Please complete Google sign-in to continue.");
+        window.location.href = `../pages/signUp.html?redirect=${encodeURIComponent(
+          window.location.href
+        )}`;
+        return;
+      }
+
+      if (!cart || cart.length === 0) {
+        showToast("Your cart is empty.");
+        return;
+      }
+
+      const stockValid = await validateStockBeforeCheckout();
+      if (!stockValid) return;
+
+      const isPickup = pickupCheckbox?.checked || false;
+
+      if (isPickup) {
+        selectedAddress = {};
+        updatePaymentModal();
+        paymentModal.style.display = "block";
+      } else {
+        addressModal.style.display = "block";
+      }
+    } catch (error) {
+      console.error("Checkout failed:", error);
+      showToast("Failed to start checkout. Please try again.");
+    } finally {
+      setLoadingState(false);
+    }
+  });
+
+  const confirmAddressBtn = document.getElementById("confirm-address");
+  if (confirmAddressBtn) {
+    confirmAddressBtn.addEventListener("click", async () => {
+      try {
+        setLoadingState(true);
+        await requireLoggedInAndRegistered();
+
+        const street = document.getElementById("street").value.trim();
+        const city = document.getElementById("city").value.trim();
+        const province = document.getElementById("province").value;
+
+        if (!street || !city || !province) {
+          showToast("Please complete all address fields.");
+          return;
+        }
+
+        selectedAddress = { street, city, province };
+        updatePaymentModal();
+        addressModal.style.display = "none";
+        paymentModal.style.display = "block";
+      } catch (err) {
+        console.error("Address confirmation error:", err);
+        showToast("Failed to confirm address. Please try again.");
+      } finally {
+        setLoadingState(false);
+      }
     });
   }
 
-  localStorage.setItem("amacusi-cart", JSON.stringify(cart));
-  updateHeaderCartCount();
-  showCartNotification(productName);
-};
+  document.querySelectorAll(".payment-method").forEach((method) => {
+    method.addEventListener("click", async () => {
+      try {
+        await requireLoggedInAndRegistered(false);
+        document
+          .querySelectorAll(".payment-method")
+          .forEach((m) => m.classList.remove("selected"));
+        method.classList.add("selected");
+      } catch (err) {
+        showToast("Please sign in to select a payment method.");
+      }
+    });
+  });
 
-// Initialize on page load
-if (document.getElementById("cart-items-list")) {
-  document.addEventListener("DOMContentLoaded", initCart);
+  const confirmPaymentBtn = document.getElementById("confirm-payment");
+  if (confirmPaymentBtn) {
+    confirmPaymentBtn.addEventListener("click", async () => {
+      try {
+        setLoadingState(true);
+        await requireLoggedInAndRegistered();
+
+        const selectedMethod = document.querySelector(
+          ".payment-method.selected"
+        )?.dataset.method;
+        if (!selectedMethod) {
+          showToast("Please select a payment method.");
+          return;
+        }
+
+        if (selectedMethod === "cash") {
+          await completeCashOrder();
+        } else {
+          showToast("This payment method is coming soon.");
+        }
+      } catch (err) {
+        console.error("Payment confirmation error:", err);
+        showToast("Failed to process payment. Please try again.");
+      } finally {
+        setLoadingState(false);
+      }
+    });
+  }
+
+  if (pickupCheckbox) {
+    pickupCheckbox.addEventListener("change", () => {
+      updateCartSummary();
+      if (paymentModal.style.display === "block") {
+        updatePaymentModal();
+      }
+    });
+  }
 }
+
+// ======================
+// Order Processing
+// ======================
+async function completeCashOrder() {
+  try {
+    setLoadingState(true);
+    await requireLoggedInAndRegistered();
+
+    const stockValid = await validateStockBeforeCheckout();
+    if (!stockValid) {
+      if (paymentModal) paymentModal.style.display = "none";
+      return;
+    }
+
+    const isPickup = pickupCheckbox?.checked || false;
+    const { street, city, province } = isPickup ? {} : selectedAddress;
+    const batch = writeBatch(db);
+    const uid = auth.currentUser.uid;
+    const orderId = generateOrderNumber(); // Now generates "AM" followed by 6 numbers
+
+    cart.forEach((item) => {
+      const productRef = doc(db, "products", item.id);
+      batch.update(productRef, { stock: increment(-item.quantity) });
+    });
+
+    const subtotal = calculateSubtotal();
+    const fee = isPickup
+      ? 0
+      : province.toLowerCase() === "mpumalanga"
+      ? 0
+      : 100;
+    const orderData = {
+      id: orderId,
+      userId: uid,
+      userEmail: auth.currentUser.email, // Added: Store user email
+      userName: auth.currentUser.displayName || "Customer", // Added: Store user name
+      items: cart.map((item) => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        imageUrl: item.imageUrl || null,
+      })),
+      subtotal,
+      deliveryFee: fee,
+      total: subtotal + fee,
+      status: "pending",
+      paymentMethod: "cash",
+      paymentStatus: "pending",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      isPickup,
+    };
+
+    if (!isPickup) {
+      orderData.address = { street, city, province };
+    }
+
+    batch.set(doc(db, "orders", orderId), orderData);
+
+    const cartId = sessionStorage.getItem("cartId");
+    if (cartId) {
+      batch.delete(doc(db, "carts", cartId));
+      sessionStorage.removeItem("cartId");
+    }
+
+    await batch.commit();
+    showOrderConfirmation(orderId);
+  } catch (error) {
+    console.error("Order processing failed:", error);
+    showToast(`Failed to place order: ${error.message}`);
+    if (paymentModal) paymentModal.style.display = "none";
+  } finally {
+    setLoadingState(false);
+  }
+}
+
+// ======================
+// UI Updates
+// ======================
+function updatePaymentModal() {
+  const isPickup = pickupCheckbox?.checked || false;
+  const { street, city, province } = selectedAddress;
+  const subtotal = calculateSubtotal();
+  const fee = isPickup ? 0 : province.toLowerCase() === "mpumalanga" ? 0 : 100;
+  deliveryFee = fee;
+
+  if (deliveryAddressDisplay) {
+    deliveryAddressDisplay.textContent = isPickup
+      ? "Store Pickup"
+      : `${street}, ${city}, ${province}`;
+  }
+  if (paymentSubtotalDisplay) {
+    paymentSubtotalDisplay.textContent = `R${subtotal.toFixed(2)}`;
+  }
+  if (deliveryFeeDisplay) {
+    deliveryFeeDisplay.textContent = fee === 0 ? "FREE" : `R${fee.toFixed(2)}`;
+  }
+  if (paymentTotalDisplay) {
+    paymentTotalDisplay.textContent = `R${(subtotal + fee).toFixed(2)}`;
+  }
+}
+
+function showOrderConfirmation(orderId) {
+  if (paymentModal) paymentModal.style.display = "none";
+  if (orderIdSpan) orderIdSpan.textContent = orderId;
+  if (confirmationModal) confirmationModal.style.display = "block";
+}
+
+// ======================
+// Initialization
+// ======================
+document.addEventListener("DOMContentLoaded", async () => {
+  try {
+    await initCart();
+    setupSecureCheckout();
+
+    window.addEventListener("click", (e) => {
+      if (e.target === addressModal) addressModal.style.display = "none";
+      if (e.target === paymentModal) paymentModal.style.display = "none";
+    });
+
+    document.querySelectorAll(".close-modal").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (addressModal) addressModal.style.display = "none";
+        if (paymentModal) paymentModal.style.display = "none";
+      });
+    });
+
+    window.addEventListener("beforeunload", () => {
+      if (unsubscribeCart) unsubscribeCart();
+    });
+  } catch (error) {
+    console.error("Initialization error:", error);
+    showToast("System error. Please refresh the page.");
+  }
+});

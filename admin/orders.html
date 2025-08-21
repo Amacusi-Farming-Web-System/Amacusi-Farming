@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Amacusi Farming - Order Management</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Open+Sans:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../admin/admin.css" />
+    <link rel="stylesheet" href="../css/orders.css" />
+  </head>
+  <body>
+    <div class="admin-container">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <img src="../Images/AmacusiLogo.png" alt="Amacusi Logo" />
+          <h3>Amacusi Admin</h3>
+        </div>
+
+        <nav class="sidebar-menu">
+          <ul>
+            <li>
+              <a href="admin.html"
+                ><i class="fas fa-tachometer-alt"></i> Dashboard</a
+              >
+            </li>
+            <li>
+              <a href="orders.html" class="active"
+                ><i class="fas fa-shopping-bag"></i> Orders</a
+              >
+            </li>
+            <li>
+              <a href="#" id="products-link"
+                ><i class="fas fa-box-open"></i> Products</a
+              >
+            </li>
+            <li>
+              <a href="#"><i class="fas fa-users"></i> Customers</a>
+            </li>
+            <li>
+              <a href="../admin/reports.html"
+                ><i class="fas fa-chart-bar"></i> Reports</a
+              >
+            </li>
+            <li>
+              <a href="#"><i class="fas fa-cog"></i> Settings</a>
+            </li>
+          </ul>
+        </nav>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <div class="admin-header">
+          <h1>Order Management</h1>
+
+          <div class="admin-user">
+            <img src="../admin-avatar.jpg" alt="Admin User" />
+            <div class="admin-user-info">
+              <h4>Admin User</h4>
+              <p>Super Admin</p>
+            </div>
+            <button class="logout-btn">
+              <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+          </div>
+        </div>
+
+        <!-- Order Management Section -->
+        <section class="dashboard-section order-management">
+          <div class="section-header">
+            <h2><i class="fas fa-clipboard-list"></i> All Orders</h2>
+            <div class="controls">
+              <div class="search-box">
+                <input
+                  type="text"
+                  id="orderSearch"
+                  placeholder="Search orders..."
+                />
+                <i class="fas fa-search"></i>
+              </div>
+
+              <select id="orderStatusFilter" class="status-filter">
+                <option value="all">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="processing">Processing</option>
+                <option value="shipped">Shipped</option>
+                <option value="delivered">Delivered</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+
+              <select id="paymentMethodFilter" class="status-filter">
+                <option value="all">All Payments</option>
+                <option value="cash">Cash</option>
+                <option value="eft">EFT</option>
+                <option value="card">Card</option>
+              </select>
+
+              <select id="deliveryTypeFilter" class="status-filter">
+                <option value="all">All Types</option>
+                <option value="pickup">Pickup</option>
+                <option value="delivery">Delivery</option>
+              </select>
+
+              <select id="cancellationFilter" class="status-filter">
+                <option value="all">All Orders</option>
+                <option value="not_cancelled">Not Cancelled</option>
+                <option value="any_cancelled">Any Cancelled</option>
+                <option value="customer_cancelled">Customer Cancelled</option>
+                <option value="admin_cancelled">Admin Cancelled</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table class="orders-table">
+              <thead>
+                <tr>
+                  <th>Order ID</th>
+                  <th>Date</th>
+                  <th>Customer</th>
+                  <th>Items</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                  <th>Payment</th>
+                  <th>Type</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="orders-list">
+                <!-- Orders will be loaded here dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Order Details Modal -->
+        <div class="modal-overlay" id="orderDetailsModal">
+          <div class="modal">
+            <div class="modal-header">
+              <h3>Order Details</h3>
+              <button class="close-btn" id="closeDetailsModal">&times;</button>
+            </div>
+            <div class="modal-body" id="orderDetailsContent">
+              <!-- Order details will be loaded here -->
+            </div>
+            <div class="modal-footer">
+              <button class="btn btn-outline" id="printOrderBtn">
+                <i class="fas fa-print"></i> Print
+              </button>
+              <button class="btn btn-primary" id="closeDetailsBtn">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <script type="module" src="../admin/adminOrders.js"></script>
+    <script src="../admin/admin.js"></script>
+  </body>
+</html>

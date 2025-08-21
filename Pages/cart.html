@@ -17,10 +17,11 @@
       </div>
       <nav>
         <ul>
-          <li><a href="index.html">Home</a></li>
+          <li><a href="../index.html">Home</a></li>
           <li><a href="products.html">Products</a></li>
           <li><a href="about.html">About Us</a></li>
           <li><a href="contact.html">Contact</a></li>
+          <li><a href="../Pages/profile.html" class="active">My Profile</a></li>
         </ul>
       </nav>
       <div class="header-icons">
@@ -70,6 +71,13 @@
               <span>Total</span>
               <span id="total">R0.00</span>
             </div>
+          </div>
+
+          <div class="delivery-option">
+            <label>
+              <input type="checkbox" id="pickup-checkbox" /> Pickup Order (No
+              Delivery Fee)
+            </label>
           </div>
 
           <button id="checkout-btn" class="btn btn-primary" disabled>
@@ -196,54 +204,28 @@
         </div>
 
         <button id="confirm-payment" class="btn">Complete Order</button>
-      </div>
-    </div>
-
-    <!-- Card Details Modal (add this after payment modal) -->
-    <div id="card-modal" class="modal">
-      <div class="modal-content">
-        <span class="close-modal">&times;</span>
-        <h2>Enter Card Details</h2>
-        <div class="card-form">
-          <div class="card-icons">
-            <i class="fab fa-cc-visa"></i>
-            <i class="fab fa-cc-mastercard"></i>
-            <i class="fab fa-cc-amex"></i>
-          </div>
-          <div class="form-group">
-            <label for="card-number">Card Number</label>
-            <input
-              type="text"
-              id="card-number"
-              placeholder="1234 5678 9012 3456"
-              maxlength="19"
-            />
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="card-expiry">Expiry Date</label>
-              <input
-                type="text"
-                id="card-expiry"
-                placeholder="MM/YY"
-                maxlength="5"
-              />
-            </div>
-            <div class="form-group">
-              <label for="card-cvc">CVC</label>
-              <input
-                type="text"
-                id="card-cvc"
-                placeholder="123"
-                maxlength="3"
-              />
-            </div>
-          </div>
-          <div class="form-group">
-            <label for="card-name">Name on Card</label>
-            <input type="text" id="card-name" placeholder="John Doe" />
-          </div>
-          <button id="submit-card" class="btn">Pay Now</button>
+        <!-- Add this near the checkout button -->
+        <div
+          id="guest-checkout-message"
+          style="
+            display: none;
+            margin-top: 1rem;
+            text-align: center;
+            background: #fff8e1;
+            padding: 10px;
+            border-radius: 4px;
+          "
+        >
+          <i class="fas fa-exclamation-circle"></i>
+          <p>
+            You must
+            <a
+              href="../pages/signUp.html"
+              style="color: #4caf50; font-weight: 600"
+              >sign in</a
+            >
+            to complete your order.
+          </p>
         </div>
       </div>
     </div>
@@ -271,6 +253,7 @@
       <!-- Your existing footer content -->
     </footer>
 
-    <script src="../cart.js"></script>
+    <script type="module" src="../cart.js"></script>
+    <script src="../logInScripts/firebaseAuth.js" type="module"></script>
   </body>
 </html>

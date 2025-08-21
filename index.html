@@ -17,34 +17,38 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
     />
     <link rel="stylesheet" href="https://unpkg.com/aos@next/dist/aos.css" />
-    <link rel="stylesheet" href="css/index.css" />
+    <link rel="stylesheet" href="../css/index.css" />
   </head>
   <body>
     <!-- Navigation -->
     <header>
       <div class="logo">
-        <img src="Images/AmacusiLogo.png" alt="Amacusi Trading Business" />
+        <img src="../Images/AmacusiLogo.png" alt="Amacusi Trading Business" />
       </div>
+
+      <!-- Hamburger Button -->
+      <button class="menu-toggle" aria-label="Toggle menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
       <nav>
         <ul>
           <li><a href="#">Home</a></li>
-<<<<<<< HEAD:Pages/index.html
           <li><a href="../Pages/Products.html">Products</a></li>
-          <li><a href="about.html">About Us</a></li>
-=======
-          <li><a href="Pages/Products.html">Products</a></li>
-          <li><a href="Pages/about.html">About Us</a></li>
->>>>>>> 8a2a93704a31e44d985305c0a05796cb702c2024:index.html
+          <li><a href="../Pages/about.html">About Us</a></li>
           <li><a href="#">Contact</a></li>
+          <li><a href="../Pages/profile.html" class="active">My Profile</a></li>
         </ul>
       </nav>
 
-      <!-- Icons on the right -->
+      <!-- Icons -->
       <div class="header-icons">
-        <a href="../pages/signUp.html" aria-label="Login">
+        <a href="../Pages/profile.html" aria-label="Profile">
           <i class="fas fa-user"></i>
         </a>
-        <a href="cart.html" aria-label="Shopping Cart">
+        <a href="../Pages/cart.html" aria-label="Shopping Cart">
           <i class="fas fa-shopping-cart"></i>
           <span class="cart-count">0</span>
         </a>
@@ -54,10 +58,14 @@
     <!-- Hero Section -->
     <section class="hero">
       <div class="slideshow">
-        <img src="Images/SmallChicks.jpg" class="slide active" />
-        <img src="Images/Cows.jpg" class="slide" />
-        <img src="Images/Eggs.jpg" class="slide" />
-        <img src="Images/Pigs.jpg" class="slide" />
+        <img
+          src="../Images/SmallChicks.jpg"
+          class="slide active"
+          alt="Chicks"
+        />
+        <img src="../Images/Cows.jpg" class="slide" alt="Cows" />
+        <img src="../Images/Eggs.jpg" class="slide" alt="Eggs" />
+        <img src="../Images/Pigs.jpg" class="slide" alt="Pigs" />
       </div>
       <div class="hero-text animate__animated animate__fadeIn">
         <h1 data-aos="fade-left" data-aos-duration="1900" data-aos-delay="200">
@@ -75,7 +83,7 @@
       </div>
     </section>
 
-    <!-- Why Choose Us - Based on Document 1 -->
+    <!-- Why Choose Us -->
     <section class="why-choose-us">
       <div class="section-header">
         <h2>Why Restaurants & Businesses Choose Amacusi</h2>
@@ -86,11 +94,8 @@
       </div>
 
       <div class="features-container">
-        <!-- Competitive Pricing -->
         <div class="feature-card" data-aos="fade-up" data-aos-delay="100">
-          <div class="feature-icon">
-            <i class="fas fa-tags"></i>
-          </div>
+          <div class="feature-icon"><i class="fas fa-tags"></i></div>
           <h3>Lower Market Prices</h3>
           <p>
             We offer poultry, beef, and pork at prices 10-15% below competitors,
@@ -99,11 +104,8 @@
           <div class="feature-badge">Price Guarantee</div>
         </div>
 
-        <!-- Free Delivery -->
         <div class="feature-card" data-aos="fade-up" data-aos-delay="300">
-          <div class="feature-icon">
-            <i class="fas fa-truck"></i>
-          </div>
+          <div class="feature-icon"><i class="fas fa-truck"></i></div>
           <h3>Free Poultry Delivery</h3>
           <p>
             Enjoy complimentary delivery on all poultry orders - a unique
@@ -112,11 +114,8 @@
           <div class="feature-badge">Exclusive Benefit</div>
         </div>
 
-        <!-- Export Quality -->
         <div class="feature-card" data-aos="fade-up" data-aos-delay="500">
-          <div class="feature-icon">
-            <i class="fas fa-globe-africa"></i>
-          </div>
+          <div class="feature-icon"><i class="fas fa-globe-africa"></i></div>
           <h3>UAE-Export Ready</h3>
           <p>
             Our farming practices meet international standards, with goat meat
@@ -125,11 +124,8 @@
           <div class="feature-badge">Future-Forward</div>
         </div>
 
-        <!-- Personalized Service -->
         <div class="feature-card" data-aos="fade-up" data-aos-delay="700">
-          <div class="feature-icon">
-            <i class="fas fa-handshake"></i>
-          </div>
+          <div class="feature-icon"><i class="fas fa-handshake"></i></div>
           <h3>Direct Farmer Relationships</h3>
           <p>
             Qiniso personally negotiates with buyers for customized supply
@@ -139,7 +135,6 @@
         </div>
       </div>
 
-      <!-- Trust Indicators -->
       <div class="trust-indicators">
         <div class="trust-item">
           <span class="trust-number">100%</span>
@@ -156,9 +151,9 @@
       </div>
     </section>
 
+    <!-- Footer -->
     <footer class="footer-with-bg">
       <div class="footer-container">
-        <!-- Products -->
         <div class="footer-section">
           <h3>Our Products</h3>
           <ul>
@@ -169,8 +164,6 @@
             <li><a href="#">Goat Meat (Coming Soon)</a></li>
           </ul>
         </div>
-
-        <!-- Farming Practices -->
         <div class="footer-section">
           <h3>Our Farming</h3>
           <ul>
@@ -180,8 +173,6 @@
             <li><a href="#">Farm Tour</a></li>
           </ul>
         </div>
-
-        <!-- Business -->
         <div class="footer-section">
           <h3>Business</h3>
           <ul>
@@ -191,8 +182,6 @@
             <li><a href="#">Careers</a></li>
           </ul>
         </div>
-
-        <!-- Order Support -->
         <div class="footer-section">
           <h3>Order Support</h3>
           <ul>
@@ -202,8 +191,6 @@
             <li><a href="#">Track Order</a></li>
           </ul>
         </div>
-
-        <!-- Contact -->
         <div class="footer-section">
           <h3>Connect With Us</h3>
           <p><i class="fas fa-map-marker-alt"></i> Mpumalanga, South Africa</p>
@@ -215,8 +202,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Copyright -->
       <div class="footer-bottom">
         <p>© 2025 Amacusi Farming. All rights reserved.</p>
         <ul>
@@ -227,12 +212,13 @@
       </div>
     </footer>
 
+    <!-- Scripts -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://unpkg.com/aos@next/dist/aos.js"></script>
     <script>
       AOS.init();
 
-      // Slideshow functionality
+      // Slideshow
       $(document).ready(function () {
         let currentSlide = 0;
         const slides = $(".slide");
@@ -248,6 +234,43 @@
         }
 
         setInterval(nextSlide, 5000);
+      });
+
+      // Hamburger menu functionality
+      document.addEventListener("DOMContentLoaded", function () {
+        const menuToggle = document.querySelector(".menu-toggle");
+        const nav = document.querySelector("nav");
+
+        if (menuToggle && nav) {
+          menuToggle.addEventListener("click", function () {
+            nav.classList.toggle("active");
+            menuToggle.classList.toggle("active");
+            document.body.classList.toggle("no-scroll");
+          });
+        }
+
+        // Close menu on link click
+        const navLinks = document.querySelectorAll("nav a");
+        navLinks.forEach((link) => {
+          link.addEventListener("click", function () {
+            nav.classList.remove("active");
+            menuToggle.classList.remove("active");
+            document.body.classList.remove("no-scroll");
+          });
+        });
+
+        // Close when clicking outside
+        document.addEventListener("click", function (event) {
+          if (
+            nav.classList.contains("active") &&
+            !nav.contains(event.target) &&
+            !menuToggle.contains(event.target)
+          ) {
+            nav.classList.remove("active");
+            menuToggle.classList.remove("active");
+            document.body.classList.remove("no-scroll");
+          }
+        });
       });
     </script>
   </body>

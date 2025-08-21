@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Amacusi - My Profile</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Open+Sans:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../css/profile.css" />
+  </head>
+  <body>
+    <!-- Navigation -->
+    <header class="profile-header">
+      <div class="logo">
+        <img src="../Images/AmacusiLogo.png" alt="Amacusi Trading Business" />
+      </div>
+      <!-- Hamburger Button -->
+      <button class="menu-toggle" aria-label="Toggle menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <nav>
+        <ul>
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="../Pages/Products.html">Products</a></li>
+          <li><a href="../Pages/about.html">About Us</a></li>
+          <li><a href="../Pages/contact.html">Contact</a></li>
+          <li><a href="../Pages/profile.html" class="active">My Profile</a></li>
+        </ul>
+      </nav>
+
+      <div class="header-icons">
+        <a href="../pages/profile.html" aria-label="Profile">
+          <i class="fas fa-user"></i>
+        </a>
+        <a href="../pages/cart.html" aria-label="Shopping Cart">
+          <i class="fas fa-shopping-cart"></i>
+          <span class="cart-count">0</span>
+        </a>
+      </div>
+    </header>
+
+    <!-- Profile Hero Section -->
+    <section class="profile-hero">
+      <div class="container">
+        <h1>My Account</h1>
+        <p>Manage your profile, orders, and preferences</p>
+      </div>
+    </section>
+
+    <!-- Profile Content -->
+    <main class="profile-container">
+      <div class="profile-sidebar">
+        <div class="profile-card">
+          <div class="profile-avatar">
+            <img
+              src="../Images/default-avatar.jpg"
+              alt="User Avatar"
+              id="user-avatar"
+            />
+            <button class="avatar-edit-btn">
+              <i class="fas fa-camera"></i>
+            </button>
+          </div>
+          <div class="profile-info">
+            <h3 id="user-name">Loading...</h3>
+            <p id="user-email">Loading...</p>
+            <div class="profile-meta">
+              <span><i class="fas fa-user-shield"></i> Verified Account</span>
+              <span
+                ><i class="fas fa-calendar-alt"></i> Member since
+                <span id="join-date">2023</span></span
+              >
+            </div>
+          </div>
+        </div>
+
+        <nav class="profile-menu">
+          <ul>
+            <li class="active">
+              <a href="#orders"><i class="fas fa-box-open"></i> My Orders</a>
+            </li>
+            <li>
+              <a href="#account"
+                ><i class="fas fa-user-cog"></i> Account Settings</a
+              >
+            </li>
+            <li>
+              <a href="#addresses"
+                ><i class="fas fa-map-marker-alt"></i> Saved Addresses</a
+              >
+            </li>
+            <li>
+              <a href="#notifications"
+                ><i class="fas fa-bell"></i> Notifications</a
+              >
+            </li>
+            <li>
+              <a href="#" id="logout-btn"
+                ><i class="fas fa-sign-out-alt"></i> Log Out</a
+              >
+            </li>
+          </ul>
+        </nav>
+      </div>
+
+      <div class="profile-content">
+        <section id="orders" class="profile-section">
+          <div class="section-header">
+            <h2>Order History</h2>
+            <div class="section-actions">
+              <button class="btn btn-outline">
+                <i class="fas fa-filter"></i> Filter
+              </button>
+            </div>
+          </div>
+          <div class="orders-list" id="orders-list">
+            <div class="loading-state">
+              <i class="fas fa-spinner fa-spin"></i>
+              <p>Loading your orders...</p>
+            </div>
+          </div>
+        </section>
+
+        <section id="account" class="profile-section" style="display: none">
+          <div class="section-header">
+            <h2>Account Settings</h2>
+          </div>
+          <form id="account-form">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="full-name">Full Name</label>
+                <input type="text" id="full-name" required />
+              </div>
+              <div class="form-group">
+                <label for="phone">Phone Number</label>
+                <input type="tel" id="phone" placeholder="+27" />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="email">Email Address</label>
+              <input type="email" id="email" disabled />
+              <span class="form-note"
+                >Contact support to change your email</span
+              >
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">
+                Save Changes
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <section id="addresses" class="profile-section" style="display: none">
+          <div class="section-header">
+            <h2>Saved Addresses</h2>
+            <button class="btn btn-primary" id="add-address-btn">
+              <i class="fas fa-plus"></i> Add New
+            </button>
+          </div>
+          <div class="addresses-list" id="addresses-list">
+            <div class="address-card">
+              <div class="address-header">
+                <h3>Primary Address</h3>
+                <span class="address-tag">Default</span>
+              </div>
+              <p id="primary-address">Loading...</p>
+              <div class="address-actions">
+                <button class="btn btn-outline edit-address">Edit</button>
+                <button class="btn btn-outline delete-address">Remove</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="notifications"
+          class="profile-section"
+          style="display: none"
+        >
+          <div class="section-header">
+            <h2>Notification Preferences</h2>
+          </div>
+          <div class="notification-settings">
+            <div class="setting-item">
+              <div class="setting-info">
+                <h3>Order Updates</h3>
+                <p>Get notified about your order status</p>
+              </div>
+              <label class="switch">
+                <input type="checkbox" checked />
+                <span class="slider round"></span>
+              </label>
+            </div>
+            <div class="setting-item">
+              <div class="setting-info">
+                <h3>Promotional Offers</h3>
+                <p>Receive special offers and discounts</p>
+              </div>
+              <label class="switch">
+                <input type="checkbox" checked />
+                <span class="slider round"></span>
+              </label>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- Order Details Modal -->
+    <div id="order-modal" class="modal">
+      <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h2>Order Details</h2>
+        <div class="order-details" id="order-details-content">
+          <!-- Order details will be loaded here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Address Form Modal -->
+    <div id="address-modal" class="modal">
+      <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h2>Add New Address</h2>
+        <form id="address-form">
+          <div class="form-group">
+            <label for="address-label">Address Label (e.g., Home, Work)</label>
+            <input type="text" id="address-label" required />
+          </div>
+          <div class="form-group">
+            <label for="street">Street Address</label>
+            <input type="text" id="street" required />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="city">City</label>
+              <input type="text" id="city" required />
+            </div>
+            <div class="form-group">
+              <label for="province">Province</label>
+              <select id="province" required>
+                <option value="">Select Province</option>
+                <option value="Mpumalanga">Mpumalanga</option>
+                <option value="Gauteng">Gauteng</option>
+                <option value="Limpopo">Limpopo</option>
+                <option value="North West">North West</option>
+                <option value="Free State">Free State</option>
+                <option value="KwaZulu-Natal">KwaZulu-Natal</option>
+                <option value="Eastern Cape">Eastern Cape</option>
+                <option value="Western Cape">Western Cape</option>
+                <option value="Northern Cape">Northern Cape</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="postal-code">Postal Code</label>
+            <input type="text" id="postal-code" required />
+          </div>
+          <div class="form-group">
+            <label class="checkbox-container">
+              <input type="checkbox" id="set-default" />
+              <span class="checkmark"></span>
+              Set as default address
+            </label>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-outline cancel-address">
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-primary">Save Address</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <footer class="footer-with-bg">
+      <div class="footer-container">
+        <div class="footer-section">
+          <h3>Our Products</h3>
+          <ul>
+            <li><a href="#">Poultry</a></li>
+            <li><a href="#">Beef</a></li>
+            <li><a href="#">Pork</a></li>
+            <li><a href="#">Eggs</a></li>
+            <li><a href="#">Goat Meat (Coming Soon)</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-section">
+          <h3>Our Farming</h3>
+          <ul>
+            <li><a href="#">Sustainable Practices</a></li>
+            <li><a href="#">Animal Welfare</a></li>
+            <li><a href="#">Quality Standards</a></li>
+            <li><a href="#">Farm Tour</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-section">
+          <h3>Business</h3>
+          <ul>
+            <li><a href="#">Wholesale Orders</a></li>
+            <li><a href="#">Export Inquiries</a></li>
+            <li><a href="#">Investor Relations</a></li>
+            <li><a href="#">Careers</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-section">
+          <h3>Order Support</h3>
+          <ul>
+            <li><a href="#">Delivery Information</a></li>
+            <li><a href="#">FAQ</a></li>
+            <li><a href="#">Contact Us</a></li>
+            <li><a href="#">Track Order</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-section">
+          <h3>Connect With Us</h3>
+          <p><i class="fas fa-map-marker-alt"></i> Mpumalanga, South Africa</p>
+          <p><i class="fas fa-phone"></i> +27 12 345 6789</p>
+          <div class="social-icons">
+            <a href="#"><i class="fab fa-facebook"></i></a>
+            <a href="#"><i class="fab fa-instagram"></i></a>
+            <a href="#"><i class="fab fa-whatsapp"></i></a>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p>© 2025 Amacusi Farming. All rights reserved.</p>
+        <ul>
+          <li><a href="#">Privacy Policy</a></li>
+          <li><a href="#">Terms of Service</a></li>
+          <li><a href="#">Ethical Farming Policy</a></li>
+        </ul>
+      </div>
+    </footer>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script type="module" src="../scripts/profile.js"></script>
+
+    <!-- JavaScript for Hamburger Menu -->
+    <script>
+      // Hamburger menu functionality
+      document.addEventListener("DOMContentLoaded", function () {
+        const menuToggle = document.querySelector(".menu-toggle");
+        const nav = document.querySelector("nav");
+        const body = document.body;
+
+        if (menuToggle && nav) {
+          menuToggle.addEventListener("click", function (e) {
+            e.stopPropagation();
+            nav.classList.toggle("active");
+            menuToggle.classList.toggle("active");
+            body.classList.toggle("no-scroll");
+          });
+        }
+
+        // Close menu on link click
+        const navLinks = document.querySelectorAll("nav a");
+        navLinks.forEach((link) => {
+          link.addEventListener("click", function () {
+            nav.classList.remove("active");
+            menuToggle.classList.remove("active");
+            body.classList.remove("no-scroll");
+          });
+        });
+
+        // Close when clicking outside
+        document.addEventListener("click", function (event) {
+          if (
+            nav.classList.contains("active") &&
+            !nav.contains(event.target) &&
+            !menuToggle.contains(event.target)
+          ) {
+            nav.classList.remove("active");
+            menuToggle.classList.remove("active");
+            body.classList.remove("no-scroll");
+          }
+        });
+
+        // Escape key to close menu
+        document.addEventListener("keydown", function (event) {
+          if (event.key === "Escape" && nav.classList.contains("active")) {
+            nav.classList.remove("active");
+            menuToggle.classList.remove("active");
+            body.classList.remove("no-scroll");
+          }
+        });
+      });
+    </script>
+  </body>
+</html>

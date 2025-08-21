@@ -15,12 +15,21 @@
         <div class="logo">
             <img src="../Images/AmacusiLogo.png" alt="Amacusi Trading Business">
         </div>
+
+        <!-- Hamburger Button -->
+      <button class="menu-toggle" aria-label="Toggle menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
         <nav>
             <ul>
-                <li><a href="index.html">Home</a></li>
+                <li><a href="../index.html">Home</a></li>
                 <li><a href="Products.html">Products</a></li>
                 <li><a href="about.html">About Us</a></li>
                 <li><a href="#">Contact</a></li>
+                <li><a href="../Pages/profile.html" class="active">My Profile</a></li>
             </ul>
         </nav>
         
@@ -264,5 +273,55 @@
             </ul>
         </div>
     </footer>
+
+    <!-- JavaScript for Hamburger Menu -->
+    <script>
+      // Hamburger menu functionality
+      document.addEventListener("DOMContentLoaded", function () {
+        const menuToggle = document.querySelector(".menu-toggle");
+        const nav = document.querySelector("nav");
+
+        if (menuToggle && nav) {
+          menuToggle.addEventListener("click", function () {
+            nav.classList.toggle("active");
+            menuToggle.classList.toggle("active");
+            document.body.classList.toggle("no-scroll");
+          });
+        }
+
+        // Close menu on link click
+        const navLinks = document.querySelectorAll("nav a");
+        navLinks.forEach((link) => {
+          link.addEventListener("click", function () {
+            nav.classList.remove("active");
+            menuToggle.classList.remove("active");
+            document.body.classList.remove("no-scroll");
+          });
+        });
+
+        // Close when clicking outside
+        document.addEventListener("click", function (event) {
+          if (
+            nav.classList.contains("active") &&
+            !nav.contains(event.target) &&
+            !menuToggle.contains(event.target)
+          ) {
+            nav.classList.remove("active");
+            menuToggle.classList.remove("active");
+            document.body.classList.remove("no-scroll");
+          }
+        });
+
+        // Escape key to close menu
+        document.addEventListener("keydown", function (event) {
+          if (event.key === "Escape" && nav.classList.contains("active")) {
+            nav.classList.remove("active");
+            menuToggle.classList.remove("active");
+            document.body.classList.remove("no-scroll");
+          }
+        });
+      });
+    </script>
+
 </body>
 </html>

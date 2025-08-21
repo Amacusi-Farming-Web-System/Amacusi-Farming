@@ -262,6 +262,18 @@ nav a:hover {
   font-size: 1rem;
 }
 
+/* Remove number input spinners */
+.quantity-input::-webkit-outer-spin-button,
+.quantity-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+.quantity-input[type="number"] {
+  -moz-appearance: textfield;
+}
+
 .remove-item {
   background: none;
   border: none;
@@ -702,4 +714,26 @@ nav a:hover {
   width: 100%;
   margin-top: 20px;
   padding: 12px;
+}
+
+/* Pickup Option Styles */
+.delivery-option {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: var(--gray);
+  border-radius: 4px;
+}
+
+.delivery-option label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.delivery-option input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
 }
