@@ -16,7 +16,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   });
 
-  // Logout functionality
+  
   const logoutBtn = document.querySelector(".logout-btn");
   if (logoutBtn) {
     logoutBtn.addEventListener("click", function () {
