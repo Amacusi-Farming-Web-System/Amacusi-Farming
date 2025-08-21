@@ -25,7 +25,7 @@ const endDateInput = document.getElementById("endDate");
 const generateReportBtn = document.getElementById("generateReport");
 const exportBtns = document.querySelectorAll(".export-btn");
 
-// Additional filter elements
+
 const categoryFilter = document.getElementById("categoryFilter");
 const productCategorySelect = document.getElementById("productCategory");
 const customerTypeFilter = document.getElementById("customerTypeFilter");
