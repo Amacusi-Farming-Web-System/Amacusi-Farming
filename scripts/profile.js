@@ -30,7 +30,7 @@ export class ProfileManager {
         this.loadUserProfile();
         this.loadOrders();
       } else {
-        window.location.href = "../pages/signUp.html";
+        window.location.href = "pages/signUp.html";
       }
     });
   }
