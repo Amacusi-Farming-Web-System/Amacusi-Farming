@@ -33,19 +33,20 @@ Amacusi Farming is a comprehensive e-commerce platform for a South African agric
 
 ## 📁 Project Structure
 
+```text
 amacusi-farming/
-├── Images/ # Product images and logos
-├── Pages/ # Main application pages
-│ ├── about.html # About us page
-│ ├── cart.html # Shopping cart
-│ ├── Products.html # Product catalog
-│ ├── profile.html # User profile
-│ ├── signUp.html # Authentication
-│ └── admin/ # Admin panel
-│ ├── admin.html # Admin dashboard
-│ ├── orders.html # Order management
-│ └── reports.html # Analytics reports
-├── css/ # Stylesheets
-├── scripts/ # Client-side JavaScript
-├── logInScripts/ # Authentication scripts
-└── productsScripts/ # Product-related functionality
+├── Images/                   # Product images and logos
+├── Pages/                    # Main application pages
+│   ├── about.html            # About us page
+│   ├── cart.html             # Shopping cart
+│   ├── Products.html         # Product catalog
+│   ├── profile.html          # User profile
+│   ├── signUp.html           # Authentication
+│   └── admin/                # Admin panel
+│       ├── admin.html        # Admin dashboard
+│       ├── orders.html       # Order management
+│       └── reports.html      # Analytics reports
+├── css/                      # Stylesheets
+├── scripts/                  # Client-side JavaScript
+├── logInScripts/             # Authentication scripts
+└── productsScripts/          # Product-related functionality
