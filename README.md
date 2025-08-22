@@ -16,6 +16,10 @@ Amacusi Farming is a comprehensive **e-commerce platform** for a 🇿🇦 South 
 It delivers an intuitive shopping experience 🛒 for customers and powerful admin tools 📊 for managing products, orders, and analytics.
 
 ---
+## 🚀 Live Demo  
+👉 Visit the project here: [🌐 Amacusi Farming Website](https://amacusi-farming-web-system.github.io/Amacusi-Farming/)  
+
+---
 
 ## 🧭 Table of Contents
 - 🌟 [Features](#-features)  
