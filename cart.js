@@ -113,7 +113,7 @@ async function requireLoggedInAndRegistered(redirectToSignUp = true) {
   if (!registered) {
     if (redirectToSignUp) {
       showToast("Please sign in with Google to continue.");
-      window.location.href = `../pages/signUp.html?redirect=${encodeURIComponent(
+      window.location.href = `../Pages/signUp.html?redirect=${encodeURIComponent(
         window.location.href
       )}`;
     }
@@ -191,7 +191,7 @@ function renderCartItems() {
     .map(
       (item) => `
     <div class="cart-item" data-id="${item.id}">
-      <img src="${item.imageUrl || "../images/default-product.jpg"}" alt="${
+      <img src="${item.imageUrl || "../Images/default-product.jpg"}" alt="${
         item.name
       }" class="cart-item-img" />
       <div class="cart-item-details">
@@ -475,7 +475,7 @@ function setupSecureCheckout() {
       const registered = await isUserRegistered(uid);
       if (!registered) {
         showToast("Please complete Google sign-in to continue.");
-        window.location.href = `../pages/signUp.html?redirect=${encodeURIComponent(
+        window.location.href = `../Pages/signUp.html?redirect=${encodeURIComponent(
           window.location.href
         )}`;
         return;
