@@ -17,7 +17,10 @@ It delivers an intuitive shopping experience 🛒 for customers and powerful adm
 
 ---
 ## 🚀 Live Demo  
-👉 Visit the project here: [🌐 Amacusi Farming Website](https://amacusi-farming-web-system.github.io/Amacusi-Farming/)  
+👉 Visit the project here: [🌐 Amacusi Farming Website](https://amacusi-farming-web-system.github.io/Amacusi-Farming/) 
+## To view the Admin Side
+👉 Access The Admin side here: [🌐 Amacusi Farming Amdmin](https://amacusi-farming-web-system.github.io/Amacusi-Farming/admin/admin.html) 
+
 
 ---
 
