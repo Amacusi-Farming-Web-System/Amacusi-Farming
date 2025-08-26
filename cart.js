@@ -101,7 +101,7 @@ async function requireLoggedInAndRegistered(redirectToSignUp = true) {
   if (!auth.currentUser) {
     if (redirectToSignUp) {
       showToast("You must sign in to continue.");
-      window.location.href = `../Pages/signUp.html?redirect=${encodeURIComponent(
+      window.location.href = `Pages/signUp.html?redirect=${encodeURIComponent(
         window.location.href
       )}`;
     }
