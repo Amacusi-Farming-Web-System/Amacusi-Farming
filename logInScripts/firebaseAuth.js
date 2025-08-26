@@ -98,7 +98,7 @@ if (signInBtn) {
     try {
       await signInWithGoogle();
       // Successful sign-in: redirect to home (your previous behaviour)
-      window.location.href = "index.html";
+      window.location.href = "../index.html";
     } catch (err) {
       // You may display UI toast instead of alert in production
       alert("Sign in failed. See console for details.");
