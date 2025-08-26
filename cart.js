@@ -465,7 +465,7 @@ function setupSecureCheckout() {
 
       if (!auth.currentUser) {
         showToast("Please sign in to proceed to checkout.");
-        window.location.href = `../pages/signUp.html?redirect=${encodeURIComponent(
+        window.location.href = `../Pages/signUp.html?redirect=${encodeURIComponent(
           window.location.href
         )}`;
         return;
