@@ -168,7 +168,7 @@ nav a.active {
 /* Product Catalog Styles */
 .products-hero {
   background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
-    url("../images/productBack.jpg") center/cover;
+    url("../Images/productBack.jpg") center/cover;
   color: white;
   text-align: center;
   padding: 100px 20px;

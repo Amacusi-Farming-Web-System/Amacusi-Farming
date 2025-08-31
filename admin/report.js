@@ -1,19 +1,22 @@
+// report.js
+// Full cleaned and fixed report script with customer insights fixes
 import {
   db,
   COLLECTIONS,
   ORDER_STATUS,
   PAYMENT_METHODS,
   PAYMENT_STATUS,
+  auth,
 } from "../admin/firebase.js";
+
 import {
   collection,
   getDocs,
   query,
   where,
   orderBy,
-  doc,
-  getDoc,
   Timestamp,
+  limit as fsLimit,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // DOM Elements
@@ -24,60 +27,49 @@ const startDateInput = document.getElementById("startDate");
 const endDateInput = document.getElementById("endDate");
 const generateReportBtn = document.getElementById("generateReport");
 const exportBtns = document.querySelectorAll(".export-btn");
-
-// Additional filter elements
 const categoryFilter = document.getElementById("categoryFilter");
 const productCategorySelect = document.getElementById("productCategory");
 const customerTypeFilter = document.getElementById("customerTypeFilter");
 const customerTypeSelect = document.getElementById("customerType");
 const paymentStatusFilter = document.getElementById("paymentStatusFilter");
 const paymentStatusSelect = document.getElementById("paymentStatus");
-
-// Summary elements
 const totalOrdersEl = document.getElementById("totalOrders");
 const totalRevenueEl = document.getElementById("totalRevenue");
 const totalProductsSoldEl = document.getElementById("totalProductsSold");
 const totalCustomersEl = document.getElementById("totalCustomers");
-
-// Report sections
 const salesReportSection = document.getElementById("salesReport");
 const paymentReportSection = document.getElementById("paymentReport");
 const productReportSection = document.getElementById("productReport");
 const customerReportSection = document.getElementById("customerReport");
+const reportLoading = document.getElementById("reportLoading");
 
 // Chart instances
-let salesTrendChart;
-let salesByCategoryChart;
-let customerTypeChart;
-let paymentMethodChart;
-let paymentSuccessChart;
-let paymentByTimeChart;
+let salesTrendChart, salesByCategoryChart, customerTypeChart;
+let paymentMethodChart, paymentSuccessChart, paymentByTimeChart;
 let productPerformanceChart;
-let customerValueChart;
-let customerAcquisitionChart;
-let customerLocationChart;
+let customerValueChart, customerAcquisitionChart, customerLocationChart, customerCategorySpendingChart;
 
 // Event Listeners
 document.addEventListener("DOMContentLoaded", initReports);
-timePeriodSelect.addEventListener("change", toggleCustomDateRange);
-reportTypeSelect.addEventListener("change", toggleAdditionalFilters);
-generateReportBtn.addEventListener("click", generateReport);
-exportBtns.forEach((btn) => btn.addEventListener("click", exportReport));
+if (timePeriodSelect)
+  timePeriodSelect.addEventListener("change", toggleCustomDateRange);
+if (reportTypeSelect)
+  reportTypeSelect.addEventListener("change", toggleAdditionalFilters);
+if (generateReportBtn)
+  generateReportBtn.addEventListener("click", generateReport);
+if (exportBtns)
+  exportBtns.forEach((btn) => btn.addEventListener("click", exportReport));
 
 // Initialize reports
 async function initReports() {
-  // Set default dates
   const today = new Date();
   const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
-  // Format dates for input fields (YYYY-MM-DD)
-  startDateInput.value = formatDateForInput(firstDayOfMonth);
-  endDateInput.value = formatDateForInput(today);
+  if (startDateInput)
+    startDateInput.value = formatDateForInput(firstDayOfMonth);
+  if (endDateInput) endDateInput.value = formatDateForInput(today);
 
-  // Load initial categories
   await populateCategoryFilter();
-
-  // Load initial report
   await generateReport();
 }
 
@@ -86,49 +78,45 @@ function formatDateForInput(date) {
 }
 
 function toggleCustomDateRange() {
+  if (!customDateRange) return;
   customDateRange.style.display =
     timePeriodSelect.value === "custom" ? "block" : "none";
 }
 
 function toggleAdditionalFilters() {
+  if (!categoryFilter || !customerTypeFilter || !paymentStatusFilter) return;
   const reportType = reportTypeSelect.value;
 
-  // Hide all additional filters first
   categoryFilter.style.display = "none";
   customerTypeFilter.style.display = "none";
   paymentStatusFilter.style.display = "none";
 
-  // Show relevant filters based on report type
-  switch (reportType) {
-    case "sales":
-      categoryFilter.style.display = "block";
-      customerTypeFilter.style.display = "block";
-      break;
-    case "payment":
-      paymentStatusFilter.style.display = "block";
-      break;
-    case "product":
-      categoryFilter.style.display = "block";
-      break;
-    case "customer":
-      // No additional filters for customer report
-      break;
+  if (reportType === "sales") {
+    categoryFilter.style.display = "block";
+    customerTypeFilter.style.display = "block";
+  } else if (reportType === "payment") {
+    paymentStatusFilter.style.display = "block";
+  } else if (reportType === "product") {
+    categoryFilter.style.display = "block";
   }
 }
 
 async function populateCategoryFilter() {
   try {
     const products = await fetchProducts();
-    const categories = [...new Set(products.map((p) => p.category))].filter(
-      (c) => c
-    );
+    if (!productCategorySelect) return;
 
     // Clear existing options except "All Categories"
     while (productCategorySelect.options.length > 1) {
       productCategorySelect.remove(1);
     }
 
-    // Add new category options
+    // Get unique categories
+    const categories = [
+      ...new Set(products.map((p) => p.category).filter(Boolean)),
+    ];
+
+    // Add category options
     categories.forEach((category) => {
       const option = document.createElement("option");
       option.value = category;
@@ -137,31 +125,35 @@ async function populateCategoryFilter() {
     });
   } catch (error) {
     console.error("Error populating category filter:", error);
+    showError("Failed to load product categories");
   }
 }
 
 async function generateReport() {
   try {
     // Show loading state
-    generateReportBtn.disabled = true;
-    generateReportBtn.innerHTML =
-      '<i class="fas fa-spinner fa-spin"></i> Generating...';
+    if (generateReportBtn) {
+      generateReportBtn.disabled = true;
+      generateReportBtn.innerHTML =
+        '<i class="fas fa-spinner fa-spin"></i> Generating...';
+    }
+    if (reportLoading) reportLoading.style.display = "block";
 
-    // Get report parameters
-    const reportType = reportTypeSelect.value;
-    const timePeriod = timePeriodSelect.value;
+    const reportType = reportTypeSelect?.value || "sales";
+    const timePeriod = timePeriodSelect?.value || "month";
 
+    // Get date range
     let startDate, endDate;
-
     if (timePeriod === "custom") {
-      startDate = new Date(startDateInput.value);
-      endDate = new Date(endDateInput.value);
-      endDate.setHours(23, 59, 59, 999); // Include the entire end day
+      startDate = startDateInput.value
+        ? new Date(startDateInput.value)
+        : new Date();
+      endDate = endDateInput.value ? new Date(endDateInput.value) : new Date();
+      endDate.setHours(23, 59, 59, 999);
     } else {
-      // Calculate dates based on time period
-      const dateRange = getDateRange(timePeriod);
-      startDate = dateRange.startDate;
-      endDate = dateRange.endDate;
+      const range = getDateRange(timePeriod);
+      startDate = range.startDate;
+      endDate = range.endDate;
     }
 
     // Validate date range
@@ -170,70 +162,270 @@ async function generateReport() {
       return;
     }
 
-    // Fetch data from Firebase
-    let orders = await fetchOrders(startDate, endDate);
-    const products = await fetchProducts();
-    const customers = await fetchCustomers();
+    // Fetch data
+    const [orders, products, customers] = await Promise.all([
+      fetchOrders(startDate, endDate),
+      fetchProducts(),
+      fetchCustomers(),
+    ]);
 
-    // Apply additional filters based on report type
-    switch (reportType) {
-      case "sales":
-        orders = filterSalesOrders(orders, products);
-        break;
-      case "payment":
-        orders = filterPaymentOrders(orders);
-        break;
-      case "product":
-        orders = filterProductOrders(orders, products);
-        break;
-      case "customer":
-        // No additional filtering needed for customer report
-        break;
+    // Apply filters based on report type
+    let filteredOrders = [...orders];
+    if (reportType === "sales") {
+      filteredOrders = filterSalesOrders(filteredOrders, products);
+    } else if (reportType === "payment") {
+      filteredOrders = filterPaymentOrders(filteredOrders);
+    } else if (reportType === "product") {
+      filteredOrders = filterProductOrders(filteredOrders, products);
     }
 
     // Update summary cards
-    updateSummaryCards(orders, products, customers);
+    updateSummaryCards(filteredOrders, products, customers);
 
-    // Generate the selected report
+    // Generate the specific report
     switch (reportType) {
       case "sales":
-        generateSalesReport(orders, products);
+        generateSalesReport(filteredOrders, products);
         break;
       case "payment":
-        generatePaymentReport(orders);
+        generatePaymentReport(filteredOrders);
         break;
       case "product":
-        generateProductReport(orders, products);
+        generateProductReport(filteredOrders, products);
         break;
       case "customer":
-        generateCustomerReport(orders, customers);
+        generateCustomerReport(filteredOrders, customers);
         break;
     }
 
-    // Show the selected report section
+    // Show the correct report section
     showReportSection(reportType);
   } catch (error) {
     console.error("Error generating report:", error);
-    showError("Failed to generate report: " + error.message);
+    showError(
+      "Failed to generate report: " + (error.message || "Unknown error")
+    );
   } finally {
     // Reset button state
-    generateReportBtn.disabled = false;
-    generateReportBtn.innerHTML =
-      '<i class="fas fa-sync-alt"></i> Generate Report';
+    if (generateReportBtn) {
+      generateReportBtn.disabled = false;
+      generateReportBtn.innerHTML =
+        '<i class="fas fa-sync-alt"></i> Generate Report';
+    }
+    if (reportLoading) reportLoading.style.display = "none";
+  }
+}
+
+// Fix: Use items field instead of products field
+function calculateProductPerformance(orders, products) {
+  const productMap = {};
+
+  // Initialize product map with all products
+  products.forEach((product) => {
+    productMap[product.id] = {
+      id: product.id,
+      name: product.name,
+      category: product.category || "Unknown",
+      sold: 0,
+      revenue: 0,
+      stock: product.stock || 0,
+      views: product.views || 0,
+    };
+  });
+
+  // Calculate sales from orders - FIXED: Use items field
+  orders.forEach((order) => {
+    // Use items field instead of products field
+    const orderItems = order.items || [];
+    orderItems.forEach((item) => {
+      if (!productMap[item.id]) {
+        // Create entry if product doesn't exist in our map
+        productMap[item.id] = {
+          id: item.id,
+          name: item.name || "Unknown Product",
+          category: "Unknown",
+          sold: 0,
+          revenue: 0,
+          stock: 0,
+          views: 0,
+        };
+      }
+
+      productMap[item.id].sold += item.quantity || 0;
+      productMap[item.id].revenue += (item.price || 0) * (item.quantity || 0);
+    });
+  });
+
+  // Convert to array and calculate conversion rate
+  const performanceData = Object.values(productMap);
+  performanceData.forEach((product) => {
+    product.conversion =
+      product.views > 0 ? (product.sold / product.views) * 100 : 0;
+  });
+
+  return performanceData.sort((a, b) => b.revenue - a.revenue);
+}
+
+// Fix: Use items field in other calculation functions too
+function calculateSalesByCategory(orders, products) {
+  const categoryMap = {};
+
+  // Create product ID to category mapping
+  const productCategoryMap = {};
+  products.forEach((product) => {
+    productCategoryMap[product.id] = product.category || "Unknown";
+  });
+
+  // Calculate sales by category - FIXED: Use items field
+  orders.forEach((order) => {
+    const orderItems = order.items || [];
+    orderItems.forEach((item) => {
+      const category = productCategoryMap[item.id] || "Unknown";
+      if (!categoryMap[category]) {
+        categoryMap[category] = {
+          category: category,
+          total: 0,
+          count: 0,
+        };
+      }
+
+      categoryMap[category].total += (item.price || 0) * (item.quantity || 0);
+      categoryMap[category].count += item.quantity || 0;
+    });
+  });
+
+  return Object.values(categoryMap);
+}
+
+// Fix: Use items field in top products calculation
+function calculateTopProducts(orders, products) {
+  const productSales = {};
+
+  // Create product ID to name mapping
+  const productNameMap = {};
+  products.forEach((product) => {
+    productNameMap[product.id] = product.name;
+  });
+
+  // Calculate product sales - FIXED: Use items field
+  orders.forEach((order) => {
+    const orderItems = order.items || [];
+    orderItems.forEach((item) => {
+      if (!productSales[item.id]) {
+        productSales[item.id] = {
+          id: item.id,
+          name: productNameMap[item.id] || item.name || "Unknown",
+          category:
+            products.find((p) => p.id === item.id)?.category || "Unknown",
+          quantity: 0,
+          revenue: 0,
+        };
+      }
+
+      productSales[item.id].quantity += item.quantity || 0;
+      productSales[item.id].revenue += (item.price || 0) * (item.quantity || 0);
+    });
+  });
+
+  const topProducts = Object.values(productSales).sort(
+    (a, b) => b.revenue - a.revenue
+  );
+  const totalRevenue = topProducts.reduce(
+    (sum, product) => sum + product.revenue,
+    0
+  );
+
+  // Calculate percentage of total sales
+  topProducts.forEach((product) => {
+    product.percentage =
+      totalRevenue > 0 ? (product.revenue / totalRevenue) * 100 : 0;
+  });
+
+  return topProducts.slice(0, 10);
+}
+
+async function fetchOrders(startDate, endDate) {
+  try {
+    const ordersQuery = window.firestore.query(
+      window.firestore.collection(window.db, window.COLLECTIONS.ORDERS),
+      window.firestore.where(
+        "createdAt",
+        ">=",
+        window.firestore.Timestamp.fromDate(startDate)
+      ),
+      window.firestore.where(
+        "createdAt",
+        "<=",
+        window.firestore.Timestamp.fromDate(endDate)
+      ),
+      window.firestore.orderBy("createdAt", "desc"),
+      window.firestore.fsLimit(1000)
+    );
+
+    const querySnapshot = await window.firestore.getDocs(ordersQuery);
+    return querySnapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        createdAt:
+          data.createdAt?.toDate?.() || new Date(data.createdAt || Date.now()),
+      };
+    });
+  } catch (error) {
+    console.error("Error fetching orders:", error);
+    showError("Failed to fetch orders");
+    return [];
+  }
+}
+
+async function fetchProducts() {
+  try {
+    const querySnapshot = await window.firestore.getDocs(
+      window.firestore.collection(window.db, window.COLLECTIONS.PRODUCTS)
+    );
+    return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    showError("Failed to fetch products");
+    return [];
+  }
+}
+
+async function fetchCustomers() {
+  try {
+    const querySnapshot = await window.firestore.getDocs(
+      window.firestore.collection(window.db, window.COLLECTIONS.USERS)
+    );
+    return querySnapshot.docs.map((doc) => {
+      const data = doc.data();
+      return { 
+        id: doc.id, 
+        ...data,
+        // Convert Firestore Timestamp to Date if it exists
+        createdAt: data.createdAt?.toDate?.() || new Date(data.createdAt || Date.now())
+      };
+    });
+  } catch (error) {
+    console.error("Error fetching customers:", error);
+    showError("Failed to fetch customers");
+    return [];
   }
 }
 
 function filterSalesOrders(orders, products) {
-  const categoryFilterValue = productCategorySelect.value;
-  const customerTypeValue = customerTypeSelect.value;
+  const categoryFilterValue = productCategorySelect?.value || "all";
+  const customerTypeValue = customerTypeSelect?.value || "all";
 
   let filteredOrders = [...orders];
 
-  // Filter by customer type if not "all"
+  // Filter by customer type
   if (customerTypeValue !== "all") {
     filteredOrders = filteredOrders.filter((order) => {
-      const totalItems =
-        order.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
+      const totalItems = (order.items || []).reduce(
+        (sum, item) => sum + (item.quantity || 0),
+        0
+      );
       const isBulk = totalItems > 10;
 
       if (customerTypeValue === "bulk") return isBulk;
@@ -242,14 +434,13 @@ function filterSalesOrders(orders, products) {
     });
   }
 
-  // Filter by category if not "all"
+  // Filter by category
   if (categoryFilterValue !== "all") {
     filteredOrders = filteredOrders.filter((order) => {
-      const hasMatchingCategory = order.items?.some((item) => {
-        const product = products.find((p) => p.id === item.productId);
+      return (order.items || []).some((item) => {
+        const product = products.find((p) => p.id === item.id);
         return product?.category === categoryFilterValue;
       });
-      return hasMatchingCategory;
     });
   }
 
@@ -257,31 +448,29 @@ function filterSalesOrders(orders, products) {
 }
 
 function filterPaymentOrders(orders) {
-  const paymentStatusValue = paymentStatusSelect.value;
-
+  const paymentStatusValue = paymentStatusSelect?.value || "all";
   if (paymentStatusValue === "all") return orders;
 
   return orders.filter((order) => {
     if (paymentStatusValue === "paid")
-      return order.paymentStatus === PAYMENT_STATUS.PAID;
+      return order.paymentStatus === window.PAYMENT_STATUS.PAID;
     if (paymentStatusValue === "pending")
-      return order.paymentStatus === PAYMENT_STATUS.PENDING;
+      return order.paymentStatus === window.PAYMENT_STATUS.PENDING;
     if (paymentStatusValue === "failed")
-      return order.paymentStatus === PAYMENT_STATUS.FAILED;
+      return order.paymentStatus === window.PAYMENT_STATUS.FAILED;
     return true;
   });
 }
 
 function filterProductOrders(orders, products) {
-  const categoryFilterValue = productCategorySelect.value;
-
+  const categoryFilterValue = productCategorySelect?.value || "all";
   if (categoryFilterValue === "all") return orders;
 
   return orders.filter((order) => {
-    return order.items?.some((item) => {
-      const product = products.find((p) => p.id === item.productId);
+    return (order.items || []).some((item) => {
+      const product = products.find((p) => p.id === item.id);
       return product?.category === categoryFilterValue;
-    });
+      });
   });
 }
 
@@ -296,7 +485,6 @@ function getDateRange(period) {
       endDate.setHours(23, 59, 59, 999);
       break;
     case "week":
-      // Get start of week (Sunday)
       startDate.setDate(today.getDate() - today.getDay());
       startDate.setHours(0, 0, 0, 0);
       endDate.setDate(today.getDate() + (6 - today.getDay()));
@@ -321,227 +509,188 @@ function getDateRange(period) {
       endDate.setMonth(11, 31);
       endDate.setHours(23, 59, 59, 999);
       break;
+    default:
+      startDate.setDate(1);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
   }
 
   return { startDate, endDate };
 }
 
-async function fetchOrders(startDate, endDate) {
-  try {
-    const ordersQuery = query(
-      collection(db, COLLECTIONS.ORDERS),
-      where("createdAt", ">=", Timestamp.fromDate(startDate)),
-      where("createdAt", "<=", Timestamp.fromDate(endDate)),
-      orderBy("createdAt", "desc")
-    );
-
-    const querySnapshot = await getDocs(ordersQuery);
-    return querySnapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        ...data,
-        createdAt:
-          data.createdAt?.toDate?.() || new Date(data.createdAt || Date.now()),
-      };
-    });
-  } catch (error) {
-    console.error("Error fetching orders:", error);
-    showError("Failed to fetch orders: " + error.message);
-    return [];
-  }
-}
-
-async function fetchProducts() {
-  try {
-    const querySnapshot = await getDocs(collection(db, COLLECTIONS.PRODUCTS));
-    return querySnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-  } catch (error) {
-    console.error("Error fetching products:", error);
-    showError("Failed to fetch products: " + error.message);
-    return [];
-  }
-}
-
-async function fetchCustomers() {
-  try {
-    const querySnapshot = await getDocs(collection(db, COLLECTIONS.USERS));
-    return querySnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-  } catch (error) {
-    console.error("Error fetching customers:", error);
-    showError("Failed to fetch customers: " + error.message);
-    return [];
-  }
-}
-
 function updateSummaryCards(orders, products, customers) {
-  // Calculate summary metrics
   const totalOrders = orders.length;
   const totalRevenue = orders.reduce(
     (sum, order) => sum + (order.total || 0),
     0
   );
-  const totalProductsSold = orders.reduce(
-    (sum, order) =>
+  const totalProductsSold = orders.reduce((sum, order) => {
+    return (
       sum +
-      (order.items?.reduce(
+      (order.items || []).reduce(
         (itemSum, item) => itemSum + (item.quantity || 0),
         0
-      ) || 0),
-    0
-  );
-  const totalCustomers = [
-    ...new Set(orders.map((order) => order.customerId || order.userId)),
-  ].length;
+      )
+    );
+  }, 0);
+  const totalCustomers = new Set(
+    orders.map((order) => order.customerId || order.userId)
+  ).size;
 
-  // Update DOM elements
-  totalOrdersEl.textContent = totalOrders.toLocaleString();
-  totalRevenueEl.textContent = `R${totalRevenue.toFixed(2)}`;
-  totalProductsSoldEl.textContent = totalProductsSold.toLocaleString();
-  totalCustomersEl.textContent = totalCustomers.toLocaleString();
+  if (totalOrdersEl) totalOrdersEl.textContent = totalOrders.toLocaleString();
+  if (totalRevenueEl)
+    totalRevenueEl.textContent = `R${totalRevenue.toFixed(2)}`;
+  if (totalProductsSoldEl)
+    totalProductsSoldEl.textContent = totalProductsSold.toLocaleString();
+  if (totalCustomersEl)
+    totalCustomersEl.textContent = totalCustomers.toLocaleString();
 }
 
 function showReportSection(reportType) {
-  // Hide all sections first
-  salesReportSection.style.display = "none";
-  paymentReportSection.style.display = "none";
-  productReportSection.style.display = "none";
-  customerReportSection.style.display = "none";
+  const sections = [
+    { id: "sales", element: salesReportSection },
+    { id: "payment", element: paymentReportSection },
+    { id: "product", element: productReportSection },
+    { id: "customer", element: customerReportSection },
+  ];
 
-  // Show the selected section
-  switch (reportType) {
-    case "sales":
-      salesReportSection.style.display = "block";
-      break;
-    case "payment":
-      paymentReportSection.style.display = "block";
-      break;
-    case "product":
-      productReportSection.style.display = "block";
-      break;
-    case "customer":
-      customerReportSection.style.display = "block";
-      break;
-  }
+  sections.forEach((section) => {
+    if (section.element) {
+      section.element.style.display =
+        section.id === reportType ? "block" : "none";
+    }
+  });
 }
 
 function generateSalesReport(orders, products) {
-  // 1. Sales Trend Chart (Daily/Monthly)
   const salesTrendData = calculateSalesTrend(orders);
   renderSalesTrendChart(salesTrendData);
 
-  // 2. Sales by Category
   const salesByCategory = calculateSalesByCategory(orders, products);
   renderSalesByCategoryChart(salesByCategory);
 
-  // 3. Customer Type (Bulk vs Regular)
   const customerTypeData = calculateCustomerType(orders);
   renderCustomerTypeChart(customerTypeData);
 
-  // 4. Top Selling Products Table
   const topProducts = calculateTopProducts(orders, products);
   renderTopProductsTable(topProducts);
 }
 
-function generatePaymentReport(orders) {
-  // 1. Payment Method Distribution
-  const paymentMethods = calculatePaymentMethods(orders);
-  renderPaymentMethodChart(paymentMethods);
-
-  // 2. Payment Success Rate
-  const paymentSuccess = calculatePaymentSuccess(orders);
-  renderPaymentSuccessChart(paymentSuccess);
-
-  // 3. Payment by Time of Day
-  const paymentByTime = calculatePaymentByTime(orders);
-  renderPaymentByTimeChart(paymentByTime);
-
-  // 4. Payment Method Details Table
-  renderPaymentDetailsTable(paymentMethods);
-}
-
 function generateProductReport(orders, products) {
-  // 1. Product Performance Chart
   const productPerformance = calculateProductPerformance(orders, products);
   renderProductPerformanceChart(productPerformance);
-
-  // 2. Product Performance Table
   renderProductPerformanceTable(productPerformance);
 }
 
-function generateCustomerReport(orders, customers) {
-  // 1. Customer Value Segmentation
-  const customerValue = calculateCustomerValue(orders, customers);
-  renderCustomerValueChart(customerValue);
+function renderProductPerformanceChart(data) {
+  const ctx = document.getElementById("productPerformanceChart");
+  if (!ctx) return;
 
-  // 2. Customer Acquisition
-  const customerAcquisition = calculateCustomerAcquisition(customers);
-  renderCustomerAcquisitionChart(customerAcquisition);
+  if (productPerformanceChart) {
+    productPerformanceChart.destroy();
+  }
 
-  // 3. Customer Location
-  const customerLocation = calculateCustomerLocation(customers);
-  renderCustomerLocationChart(customerLocation);
+  // Get top 10 products for the chart
+  const topProducts = data.slice(0, 10);
 
-  // 4. Top Customers Table
-  renderTopCustomersTable(customerValue);
+  productPerformanceChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: topProducts.map((p) =>
+        p.name.length > 20 ? p.name.substring(0, 20) + "..." : p.name
+      ),
+      datasets: [
+        {
+          label: "Revenue (R)",
+          data: topProducts.map((p) => p.revenue),
+          backgroundColor: "rgba(76, 175, 80, 0.7)",
+          borderColor: "rgba(76, 175, 80, 1)",
+          borderWidth: 1,
+        },
+        {
+          label: "Units Sold",
+          data: topProducts.map((p) => p.sold),
+          backgroundColor: "rgba(54, 162, 235, 0.7)",
+          borderColor: "rgba(54, 162, 235, 1)",
+          borderWidth: 1,
+          type: "line",
+          yAxisID: "y1",
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: "Revenue (R)",
+          },
+        },
+        y1: {
+          beginAtZero: true,
+          position: "right",
+          title: {
+            display: true,
+            text: "Units Sold",
+          },
+          grid: {
+            drawOnChartArea: false,
+          },
+        },
+      },
+    },
+  });
 }
 
-// Sales Report Calculations
+function renderProductPerformanceTable(data) {
+  const tbody = document.querySelector("#productPerformanceTable tbody");
+  if (!tbody) return;
+
+  tbody.innerHTML = "";
+
+  if (data.length === 0) {
+    tbody.innerHTML =
+      '<tr><td colspan="6" class="text-center">No product data found</td></tr>';
+    return;
+  }
+
+  data.forEach((product) => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+            <td>${escapeHtml(product.name)}</td>
+            <td>${escapeHtml(product.category)}</td>
+            <td>${(product.sold || 0).toLocaleString()}</td>
+            <td>R${(product.revenue || 0).toFixed(2)}</td>
+            <td>${(product.stock || 0).toLocaleString()}</td>
+            <td>${(product.conversion || 0).toFixed(2)}%</td>
+        `;
+    tbody.appendChild(row);
+  });
+}
+
 function calculateSalesTrend(orders) {
-  // Group orders by day
   const dailySales = {};
 
   orders.forEach((order) => {
     const date = order.createdAt.toISOString().split("T")[0];
     if (!dailySales[date]) {
       dailySales[date] = {
-        date,
+        date: date,
         total: 0,
         count: 0,
       };
     }
+
     dailySales[date].total += order.total || 0;
     dailySales[date].count++;
   });
 
-  // Convert to array and sort by date
   return Object.values(dailySales).sort(
     (a, b) => new Date(a.date) - new Date(b.date)
   );
-}
-
-function calculateSalesByCategory(orders, products) {
-  const categoryMap = {};
-
-  // First create a product ID to category map
-  const productCategoryMap = {};
-  products.forEach((product) => {
-    productCategoryMap[product.id] = product.category || "Unknown";
-  });
-
-  // Then calculate sales by category
-  orders.forEach((order) => {
-    order.items?.forEach((item) => {
-      const category = productCategoryMap[item.productId] || "Unknown";
-      if (!categoryMap[category]) {
-        categoryMap[category] = {
-          category,
-          total: 0,
-          count: 0,
-        };
-      }
-      categoryMap[category].total += (item.price || 0) * (item.quantity || 0);
-      categoryMap[category].count += item.quantity || 0;
-    });
-  });
-
-  return Object.values(categoryMap);
 }
 
 function calculateCustomerType(orders) {
@@ -551,10 +700,13 @@ function calculateCustomerType(orders) {
   };
 
   orders.forEach((order) => {
-    const totalItems =
-      order.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
+    const totalItems = (order.items || []).reduce(
+      (sum, item) => sum + (item.quantity || 0),
+      0
+    );
     const isBulk = totalItems > 10;
     const type = isBulk ? "bulk" : "regular";
+
     customerTypes[type].count++;
     customerTypes[type].total += order.total || 0;
   });
@@ -562,252 +714,6 @@ function calculateCustomerType(orders) {
   return customerTypes;
 }
 
-function calculateTopProducts(orders, products) {
-  const productSales = {};
-
-  // Create a product ID to name map
-  const productNameMap = {};
-  products.forEach((product) => {
-    productNameMap[product.id] = product.name;
-  });
-
-  // Calculate sales per product
-  orders.forEach((order) => {
-    order.items?.forEach((item) => {
-      if (!productSales[item.productId]) {
-        productSales[item.productId] = {
-          id: item.productId,
-          name: productNameMap[item.productId] || "Unknown",
-          category:
-            products.find((p) => p.id === item.productId)?.category ||
-            "Unknown",
-          quantity: 0,
-          revenue: 0,
-        };
-      }
-      productSales[item.productId].quantity += item.quantity || 0;
-      productSales[item.productId].revenue +=
-        (item.price || 0) * (item.quantity || 0);
-    });
-  });
-
-  const topProducts = Object.values(productSales).sort(
-    (a, b) => b.revenue - a.revenue
-  );
-
-  // Calculate percentage of total sales
-  const totalRevenue = topProducts.reduce(
-    (sum, product) => sum + product.revenue,
-    0
-  );
-  topProducts.forEach((product) => {
-    product.percentage =
-      totalRevenue > 0 ? (product.revenue / totalRevenue) * 100 : 0;
-  });
-
-  return topProducts.slice(0, 10); // Return top 10 products
-}
-
-// Payment Report Calculations
-function calculatePaymentMethods(orders) {
-  const paymentMethods = {};
-
-  // Initialize all payment methods
-  Object.values(PAYMENT_METHODS).forEach((method) => {
-    paymentMethods[method] = {
-      method,
-      count: 0,
-      success: 0,
-      total: 0,
-    };
-  });
-
-  // Calculate payment method stats
-  orders.forEach((order) => {
-    const method = order.paymentMethod || "unknown";
-    if (!paymentMethods[method]) {
-      paymentMethods[method] = {
-        method,
-        count: 0,
-        success: 0,
-        total: 0,
-      };
-    }
-
-    paymentMethods[method].count++;
-    paymentMethods[method].total += order.total || 0;
-
-    if (order.paymentStatus === PAYMENT_STATUS.PAID) {
-      paymentMethods[method].success++;
-    }
-  });
-
-  return Object.values(paymentMethods).filter((method) => method.count > 0);
-}
-
-function calculatePaymentSuccess(orders) {
-  let success = 0;
-  let failed = 0;
-  let pending = 0;
-
-  orders.forEach((order) => {
-    if (order.paymentStatus === PAYMENT_STATUS.PAID) {
-      success++;
-    } else if (order.paymentStatus === PAYMENT_STATUS.FAILED) {
-      failed++;
-    } else if (order.paymentStatus === PAYMENT_STATUS.PENDING) {
-      pending++;
-    }
-  });
-
-  return { success, failed, pending };
-}
-
-function calculatePaymentByTime(orders) {
-  const timeSlots = {
-    "Morning (6am-12pm)": 0,
-    "Afternoon (12pm-6pm)": 0,
-    "Evening (6pm-12am)": 0,
-    "Night (12am-6am)": 0,
-  };
-
-  orders.forEach((order) => {
-    const hour = order.createdAt.getHours();
-    let timeSlot;
-
-    if (hour >= 6 && hour < 12) timeSlot = "Morning (6am-12pm)";
-    else if (hour >= 12 && hour < 18) timeSlot = "Afternoon (12pm-6pm)";
-    else if (hour >= 18 && hour < 24) timeSlot = "Evening (6pm-12am)";
-    else timeSlot = "Night (12am-6am)";
-
-    timeSlots[timeSlot]++;
-  });
-
-  return timeSlots;
-}
-
-// Product Report Calculations
-function calculateProductPerformance(orders, products) {
-  const performanceData = [];
-
-  // Create a map of product IDs to their data
-  const productMap = {};
-  products.forEach((product) => {
-    productMap[product.id] = {
-      id: product.id,
-      name: product.name,
-      category: product.category,
-      sold: 0,
-      revenue: 0,
-      stock: product.stock || 0,
-      views: product.views || 0,
-    };
-  });
-
-  // Calculate sales data
-  orders.forEach((order) => {
-    order.items?.forEach((item) => {
-      if (productMap[item.productId]) {
-        productMap[item.productId].sold += item.quantity || 0;
-        productMap[item.productId].revenue +=
-          (item.price || 0) * (item.quantity || 0);
-      }
-    });
-  });
-
-  // Convert to array and calculate conversion rate
-  Object.values(productMap).forEach((data) => {
-    data.conversion = data.views > 0 ? (data.sold / data.views) * 100 : 0;
-    performanceData.push(data);
-  });
-
-  return performanceData.sort((a, b) => b.revenue - a.revenue);
-}
-
-// Customer Report Calculations
-function calculateCustomerValue(orders, customers) {
-  const customerData = {};
-
-  // Initialize customer data
-  customers.forEach((customer) => {
-    customerData[customer.id] = {
-      id: customer.id,
-      name:
-        customer.name ||
-        customer.email ||
-        `Customer ${customer.id.substring(0, 6)}`,
-      email: customer.email,
-      orders: 0,
-      totalSpent: 0,
-      lastPurchase: null,
-    };
-  });
-
-  // Calculate customer metrics
-  orders.forEach((order) => {
-    const customerId = order.customerId || order.userId;
-    if (customerData[customerId]) {
-      customerData[customerId].orders++;
-      customerData[customerId].totalSpent += order.total || 0;
-
-      const orderDate = order.createdAt;
-      if (
-        !customerData[customerId].lastPurchase ||
-        orderDate > customerData[customerId].lastPurchase
-      ) {
-        customerData[customerId].lastPurchase = orderDate;
-      }
-    }
-  });
-
-  // Calculate average order value
-  Object.values(customerData).forEach((customer) => {
-    customer.avgOrder =
-      customer.orders > 0 ? customer.totalSpent / customer.orders : 0;
-  });
-
-  return Object.values(customerData).sort(
-    (a, b) => b.totalSpent - a.totalSpent
-  );
-}
-
-function calculateCustomerAcquisition(customers) {
-  const acquisitionData = {};
-
-  customers.forEach((customer) => {
-    const date =
-      customer.createdAt?.toISOString().split("T")[0] ||
-      new Date().toISOString().split("T")[0];
-    if (!acquisitionData[date]) {
-      acquisitionData[date] = 0;
-    }
-    acquisitionData[date]++;
-  });
-
-  return Object.entries(acquisitionData)
-    .map(([date, count]) => ({ date, count }))
-    .sort((a, b) => new Date(a.date) - new Date(b.date));
-}
-
-function calculateCustomerLocation(customers) {
-  const locationData = {};
-
-  customers.forEach((customer) => {
-    const location =
-      customer.address?.province || customer.location || "Unknown";
-    if (!locationData[location]) {
-      locationData[location] = 0;
-    }
-    locationData[location]++;
-  });
-
-  return Object.entries(locationData).map(([location, count]) => ({
-    location,
-    count,
-  }));
-}
-
-// Chart Rendering Functions
 function renderSalesTrendChart(data) {
   const ctx = document.getElementById("salesTrendChart");
   if (!ctx) return;
@@ -816,7 +722,7 @@ function renderSalesTrendChart(data) {
     salesTrendChart.destroy();
   }
 
-  salesTrendChart = new Chart(ctx.getContext("2d"), {
+  salesTrendChart = new Chart(ctx, {
     type: "line",
     data: {
       labels: data.map((item) => formatChartDate(item.date)),
@@ -876,7 +782,7 @@ function renderSalesByCategoryChart(data) {
     salesByCategoryChart.destroy();
   }
 
-  salesByCategoryChart = new Chart(ctx.getContext("2d"), {
+  salesByCategoryChart = new Chart(ctx, {
     type: "bar",
     data: {
       labels: data.map((item) => item.category),
@@ -928,7 +834,7 @@ function renderCustomerTypeChart(data) {
     customerTypeChart.destroy();
   }
 
-  customerTypeChart = new Chart(ctx.getContext("2d"), {
+  customerTypeChart = new Chart(ctx, {
     type: "doughnut",
     data: {
       labels: ["Bulk Buyers", "Regular Customers"],
@@ -967,6 +873,121 @@ function renderCustomerTypeChart(data) {
   });
 }
 
+function renderTopProductsTable(data) {
+  const tbody = document.querySelector("#topProductsTable tbody");
+  if (!tbody) return;
+
+  tbody.innerHTML = "";
+
+  if (data.length === 0) {
+    tbody.innerHTML =
+      '<tr><td colspan="5" class="text-center">No products found</td></tr>';
+    return;
+  }
+
+  data.forEach((product) => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+            <td>${escapeHtml(product.name)}</td>
+            <td>${escapeHtml(product.category)}</td>
+            <td>${(product.quantity || 0).toLocaleString()}</td>
+            <td>R${(product.revenue || 0).toFixed(2)}</td>
+            <td>${(product.percentage || 0).toFixed(1)}%</td>
+        `;
+    tbody.appendChild(row);
+  });
+}
+
+function generatePaymentReport(orders) {
+  const paymentMethods = calculatePaymentMethods(orders);
+  renderPaymentMethodChart(paymentMethods);
+
+  const paymentSuccess = calculatePaymentSuccess(orders);
+  renderPaymentSuccessChart(paymentSuccess);
+
+  const paymentByTime = calculatePaymentByTime(orders);
+  renderPaymentByTimeChart(paymentByTime);
+
+  renderPaymentDetailsTable(paymentMethods);
+}
+
+function calculatePaymentMethods(orders) {
+  const paymentMethods = {};
+
+  // Initialize all payment methods
+  Object.values(window.PAYMENT_METHODS || {}).forEach((method) => {
+    paymentMethods[method] = {
+      method: method,
+      count: 0,
+      success: 0,
+      total: 0,
+    };
+  });
+
+  // Calculate payment method stats
+  orders.forEach((order) => {
+    const method = order.paymentMethod || "unknown";
+    if (!paymentMethods[method]) {
+      paymentMethods[method] = {
+        method: method,
+        count: 0,
+        success: 0,
+        total: 0,
+      };
+    }
+
+    paymentMethods[method].count++;
+    paymentMethods[method].total += order.total || 0;
+
+    if (order.paymentStatus === window.PAYMENT_STATUS.PAID) {
+      paymentMethods[method].success++;
+    }
+  });
+
+  return Object.values(paymentMethods).filter((method) => method.count > 0);
+}
+
+function calculatePaymentSuccess(orders) {
+  let success = 0,
+    failed = 0,
+    pending = 0;
+
+  orders.forEach((order) => {
+    if (order.paymentStatus === window.PAYMENT_STATUS.PAID) {
+      success++;
+    } else if (order.paymentStatus === window.PAYMENT_STATUS.FAILED) {
+      failed++;
+    } else if (order.paymentStatus === window.PAYMENT_STATUS.PENDING) {
+      pending++;
+    }
+  });
+
+  return { success, failed, pending };
+}
+
+function calculatePaymentByTime(orders) {
+  const timeSlots = {
+    "Morning (6am-12pm)": 0,
+    "Afternoon (12pm-6pm)": 0,
+    "Evening (6pm-12am)": 0,
+    "Night (12am-6am)": 0,
+  };
+
+  orders.forEach((order) => {
+    const hour = order.createdAt.getHours();
+    let timeSlot;
+
+    if (hour >= 6 && hour < 12) timeSlot = "Morning (6am-12pm)";
+    else if (hour >= 12 && hour < 18) timeSlot = "Afternoon (12pm-6pm)";
+    else if (hour >= 18 && hour < 24) timeSlot = "Evening (6pm-12am)";
+    else timeSlot = "Night (12am-6am)";
+
+    timeSlots[timeSlot]++;
+  });
+
+  return timeSlots;
+}
+
 function renderPaymentMethodChart(data) {
   const ctx = document.getElementById("paymentMethodChart");
   if (!ctx) return;
@@ -975,7 +996,7 @@ function renderPaymentMethodChart(data) {
     paymentMethodChart.destroy();
   }
 
-  paymentMethodChart = new Chart(ctx.getContext("2d"), {
+  paymentMethodChart = new Chart(ctx, {
     type: "pie",
     data: {
       labels: data.map((item) => item.method.toUpperCase()),
@@ -988,7 +1009,7 @@ function renderPaymentMethodChart(data) {
             "rgba(255, 206, 86, 0.7)",
             "rgba(75, 192, 192, 0.7)",
           ],
-          borderColor: [
+  borderColor: [
             "rgba(76, 175, 80, 1)",
             "rgba(54, 162, 235, 1)",
             "rgba(255, 206, 86, 1)",
@@ -1029,7 +1050,7 @@ function renderPaymentSuccessChart(data) {
     paymentSuccessChart.destroy();
   }
 
-  paymentSuccessChart = new Chart(ctx.getContext("2d"), {
+  paymentSuccessChart = new Chart(ctx, {
     type: "doughnut",
     data: {
       labels: ["Successful", "Failed", "Pending"],
@@ -1081,13 +1102,13 @@ function renderPaymentByTimeChart(data) {
     paymentByTimeChart.destroy();
   }
 
-  paymentByTimeChart = new Chart(ctx.getContext("2d"), {
+  paymentByTimeChart = new Chart(ctx, {
     type: "bar",
     data: {
       labels: Object.keys(data),
       datasets: [
         {
-          label: "Number of Transactions",
+          label: "Number of Payments",
           data: Object.values(data),
           backgroundColor: "rgba(54, 162, 235, 0.7)",
           borderColor: "rgba(54, 162, 235, 1)",
@@ -1103,7 +1124,7 @@ function renderPaymentByTimeChart(data) {
           beginAtZero: true,
           title: {
             display: true,
-            text: "Number of Transactions",
+            text: "Number of Payments",
           },
         },
       },
@@ -1111,69 +1132,192 @@ function renderPaymentByTimeChart(data) {
   });
 }
 
-function renderProductPerformanceChart(data) {
-  const ctx = document.getElementById("productPerformanceChart");
-  if (!ctx) return;
+function renderPaymentDetailsTable(data) {
+  const tbody = document.querySelector("#paymentDetailsTable tbody");
+  if (!tbody) return;
 
-  if (productPerformanceChart) {
-    productPerformanceChart.destroy();
+  tbody.innerHTML = "";
+
+  if (data.length === 0) {
+    tbody.innerHTML =
+      '<tr><td colspan="5" class="text-center">No payment data found</td></tr>';
+    return;
   }
 
-  // Get top 10 products for the chart
-  const topProducts = data.slice(0, 10);
-
-  productPerformanceChart = new Chart(ctx.getContext("2d"), {
-    type: "bar",
-    data: {
-      labels: topProducts.map(
-        (item) =>
-          item.name.substring(0, 20) + (item.name.length > 20 ? "..." : "")
-      ),
-      datasets: [
-        {
-          label: "Revenue (R)",
-          data: topProducts.map((item) => item.revenue),
-          backgroundColor: "rgba(76, 175, 80, 0.7)",
-          borderColor: "rgba(76, 175, 80, 1)",
-          borderWidth: 1,
-          yAxisID: "y",
-        },
-        {
-          label: "Units Sold",
-          data: topProducts.map((item) => item.sold),
-          backgroundColor: "rgba(54, 162, 235, 0.7)",
-          borderColor: "rgba(54, 162, 235, 1)",
-          borderWidth: 1,
-          yAxisID: "y1",
-        },
-      ],
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        y: {
-          beginAtZero: true,
-          position: "left",
-          title: {
-            display: true,
-            text: "Revenue (R)",
-          },
-        },
-        y1: {
-          beginAtZero: true,
-          position: "right",
-          title: {
-            display: true,
-            text: "Units Sold",
-          },
-          grid: {
-            drawOnChartArea: false,
-          },
-        },
-      },
-    },
+  data.forEach((method) => {
+    const successRate =
+      method.count > 0 ? ((method.success / method.count) * 100).toFixed(1) : 0;
+    const row = document.createElement("tr");
+    row.innerHTML = `
+            <td>${escapeHtml(method.method.toUpperCase())}</td>
+            <td>${method.count.toLocaleString()}</td>
+            <td>${method.success.toLocaleString()}</td>
+            <td>${successRate}%</td>
+            <td>R${method.total.toFixed(2)}</td>
+        `;
+    tbody.appendChild(row);
   });
+}
+
+function generateCustomerReport(orders, customers) {
+  const customerValue = calculateCustomerValue(orders, customers);
+  renderCustomerValueChart(customerValue);
+
+  const customerAcquisition = calculateCustomerAcquisition(customers);
+  renderCustomerAcquisitionChart(customerAcquisition);
+
+  // REPLACE LOCATION CHART WITH VALUE SEGMENTATION CHART
+  const customerValueSegmentation = calculateCustomerValueSegmentation(customerValue);
+  renderCustomerValueSegmentationChart(customerValueSegmentation);
+
+  const customerCategorySpending = calculateCustomerCategorySpending(orders, customers);
+  renderCustomerCategorySpendingChart(customerCategorySpending);
+  renderCustomerCategorySpendingTable(customerCategorySpending);
+
+  renderCustomerDetailsTable(customerValue);
+}
+
+function calculateCustomerValue(orders, customers) {
+  const customerOrders = {};
+
+  // Group orders by customer
+  orders.forEach((order) => {
+    const customerId = order.customerId || order.userId;
+    if (!customerId) return;
+
+    if (!customerOrders[customerId]) {
+      customerOrders[customerId] = {
+        customerId: customerId,
+        totalSpent: 0,
+        orderCount: 0,
+        lastPurchase: new Date(0),
+      };
+    }
+
+    customerOrders[customerId].totalSpent += order.total || 0;
+    customerOrders[customerId].orderCount++;
+    
+    // Update last purchase date
+    const orderDate = order.createdAt;
+    if (orderDate > customerOrders[customerId].lastPurchase) {
+      customerOrders[customerId].lastPurchase = orderDate;
+    }
+  });
+
+  // Get customer details and categorize
+  const customerValues = Object.values(customerOrders).map((customer) => {
+    const customerData = customers.find((c) => c.id === customer.customerId);
+    
+    // FIXED: Enhanced customer name detection with more field possibilities
+    let customerName = "Unknown Customer";
+    let customerEmail = "No email";
+    
+    if (customerData) {
+      // Try multiple possible field names for customer name
+      if (customerData.name) {
+        customerName = customerData.name;
+      } else if (customerData.displayName) {
+        customerName = customerData.displayName;
+      } else if (customerData.firstName || customerData.lastName) {
+        customerName = `${customerData.firstName || ''} ${customerData.lastName || ''}`.trim();
+      } else if (customerData.email) {
+        customerName = customerData.email.split('@')[0]; // Use username part of email
+      }
+      
+      // Get email from various possible fields
+      if (customerData.email) {
+        customerEmail = customerData.email;
+      }
+    }
+    
+    const customerType = customer.totalSpent > 1000 ? "Premium" : 
+                        customer.totalSpent > 500 ? "Regular" : "Casual";
+    
+    return {
+      ...customer,
+      name: customerName,
+      email: customerEmail,
+      customerType: customerType
+    };
+  });
+
+  // Sort by total spent
+  return customerValues.sort((a, b) => b.totalSpent - a.totalSpent);
+}
+
+function calculateCustomerCategorySpending(orders, customers) {
+  const customerCategories = {
+    Premium: { totalSpent: 0, orderCount: 0, customerCount: 0 },
+    Regular: { totalSpent: 0, orderCount: 0, customerCount: 0 },
+    Casual: { totalSpent: 0, orderCount: 0, customerCount: 0 }
+  };
+
+  const customerValues = calculateCustomerValue(orders, customers);
+  
+  customerValues.forEach(customer => {
+    const category = customer.customerType;
+    customerCategories[category].totalSpent += customer.totalSpent;
+    customerCategories[category].orderCount += customer.orderCount;
+    customerCategories[category].customerCount++;
+  });
+
+  // Calculate averages and percentages
+  const totalRevenue = Object.values(customerCategories).reduce((sum, cat) => sum + cat.totalSpent, 0);
+  
+  return Object.entries(customerCategories).map(([category, data]) => ({
+    category,
+    totalSpent: data.totalSpent,
+    averageOrderValue: data.orderCount > 0 ? data.totalSpent / data.orderCount : 0,
+    orderCount: data.orderCount,
+    customerCount: data.customerCount,
+    percentageOfRevenue: totalRevenue > 0 ? (data.totalSpent / totalRevenue) * 100 : 0
+  }));
+}
+
+function calculateCustomerAcquisition(customers) {
+  const monthlyAcquisition = {};
+
+  customers.forEach((customer) => {
+    const monthYear = customer.createdAt.toISOString().substring(0, 7); // YYYY-MM format
+    if (!monthlyAcquisition[monthYear]) {
+      monthlyAcquisition[monthYear] = {
+        month: monthYear,
+        count: 0,
+      };
+    }
+    monthlyAcquisition[monthYear].count++;
+  });
+
+  return Object.values(monthlyAcquisition).sort((a, b) =>
+    a.month.localeCompare(b.month)
+  );
+}
+
+function calculateCustomerValueSegmentation(customers) {
+  const valueSegments = {
+    "Premium (R1000+)": 0,
+    "Regular (R500-R999)": 0,
+    "Casual (< R500)": 0,
+    "New (No purchases)": 0
+  };
+
+  customers.forEach((customer) => {
+    const totalSpent = customer.totalSpent || 0;
+    
+    if (totalSpent === 0) {
+      valueSegments["New (No purchases)"]++;
+    } else if (totalSpent >= 1000) {
+      valueSegments["Premium (R1000+)"]++;
+    } else if (totalSpent >= 500) {
+      valueSegments["Regular (R500-R999)"]++;
+    } else {
+      valueSegments["Casual (< R500)"]++;
+    }
+  });
+
+  return Object.entries(valueSegments)
+    .map(([segment, count]) => ({ segment, count }))
+    .filter(item => item.count > 0); // Only show segments with customers
 }
 
 function renderCustomerValueChart(data) {
@@ -1184,45 +1328,21 @@ function renderCustomerValueChart(data) {
     customerValueChart.destroy();
   }
 
-  // Segment customers by value
-  const segments = {
-    "High Value": 0,
-    "Medium Value": 0,
-    "Low Value": 0,
-    "New/Inactive": 0,
-  };
+  // Get top 10 customers by value
+  const topCustomers = data.slice(0, 10);
 
-  data.forEach((customer) => {
-    if (customer.orders === 0) {
-      segments["New/Inactive"]++;
-    } else if (customer.totalSpent > 1000) {
-      segments["High Value"]++;
-    } else if (customer.totalSpent > 500) {
-      segments["Medium Value"]++;
-    } else {
-      segments["Low Value"]++;
-    }
-  });
-
-  customerValueChart = new Chart(ctx.getContext("2d"), {
-    type: "pie",
+  customerValueChart = new Chart(ctx, {
+    type: "bar",
     data: {
-      labels: Object.keys(segments),
+      labels: topCustomers.map((c) =>
+        c.name.length > 20 ? c.name.substring(0, 20) + "..." : c.name
+      ),
       datasets: [
         {
-          data: Object.values(segments),
-          backgroundColor: [
-            "rgba(76, 175, 80, 0.7)",
-            "rgba(54, 162, 235, 0.7)",
-            "rgba(255, 206, 86, 0.7)",
-            "rgba(201, 203, 207, 0.7)",
-          ],
-          borderColor: [
-            "rgba(76, 175, 80, 1)",
-            "rgba(54, 162, 235, 1)",
-            "rgba(255, 206, 86, 1)",
-            "rgba(201, 203, 207, 1)",
-          ],
+          label: "Total Spent (R)",
+          data: topCustomers.map((c) => c.totalSpent),
+          backgroundColor: "rgba(76, 175, 80, 0.7)",
+          borderColor: "rgba(76, 175, 80, 1)",
           borderWidth: 1,
         },
       ],
@@ -1230,23 +1350,99 @@ function renderCustomerValueChart(data) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          position: "bottom",
-        },
-        tooltip: {
-          callbacks: {
-            label: function (context) {
-              const label = context.label || "";
-              const value = context.raw || 0;
-              const total = context.dataset.data.reduce((a, b) => a + b, 0);
-              const percentage = Math.round((value / total) * 100);
-              return `${label}: ${value} (${percentage}%)`;
-            },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: "Total Spent (R)",
           },
         },
       },
     },
+  });
+}
+
+function renderCustomerCategorySpendingChart(data) {
+  const ctx = document.getElementById("customerCategorySpendingChart");
+  if (!ctx) return;
+
+  if (customerCategorySpendingChart) {
+    customerCategorySpendingChart.destroy();
+  }
+
+  customerCategorySpendingChart = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: data.map(item => item.category),
+      datasets: [
+        {
+          label: "Total Spent (R)",
+          data: data.map(item => item.totalSpent),
+          backgroundColor: "rgba(76, 175, 80, 0.7)",
+          borderColor: "rgba(76, 175, 80, 1)",
+          borderWidth: 1,
+        },
+        {
+          label: "Customers Count",
+          data: data.map(item => item.customerCount),
+          backgroundColor: "rgba(54, 162, 235, 0.7)",
+          borderColor: "rgba(54, 162, 235, 1)",
+          borderWidth: 1,
+          type: "line",
+          yAxisID: "y1",
+        }
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: "Total Spent (R)",
+          },
+        },
+        y1: {
+          beginAtZero: true,
+          position: "right",
+          title: {
+            display: true,
+            text: "Customers Count",
+          },
+          grid: {
+            drawOnChartArea: false,
+          },
+        },
+      },
+    },
+  });
+}
+
+function renderCustomerCategorySpendingTable(data) {
+  const tbody = document.querySelector("#customerCategorySpendingTable tbody");
+  if (!tbody) return;
+
+  tbody.innerHTML = "";
+
+  if (data.length === 0) {
+    tbody.innerHTML =
+      '<tr><td colspan="5" class="text-center">No customer category data found</td></tr>';
+    return;
+  }
+
+  data.forEach((category) => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+            <td>${escapeHtml(category.category)}</td>
+            <td>R${category.totalSpent.toFixed(2)}</td>
+            <td>R${category.averageOrderValue.toFixed(2)}</td>
+            <td>${category.orderCount.toLocaleString()}</td>
+            <td>${category.percentageOfRevenue.toFixed(1)}%</td>
+        `;
+    tbody.appendChild(row);
   });
 }
 
@@ -1258,10 +1454,10 @@ function renderCustomerAcquisitionChart(data) {
     customerAcquisitionChart.destroy();
   }
 
-  customerAcquisitionChart = new Chart(ctx.getContext("2d"), {
+  customerAcquisitionChart = new Chart(ctx, {
     type: "line",
     data: {
-      labels: data.map((item) => formatChartDate(item.date)),
+      labels: data.map((item) => formatMonthYear(item.month)),
       datasets: [
         {
           label: "New Customers",
@@ -1290,24 +1486,33 @@ function renderCustomerAcquisitionChart(data) {
   });
 }
 
-function renderCustomerLocationChart(data) {
-  const ctx = document.getElementById("customerLocationChart");
+function renderCustomerValueSegmentationChart(data) {
+  const ctx = document.getElementById("customerValueSegmentationChart");
   if (!ctx) return;
 
   if (customerLocationChart) {
     customerLocationChart.destroy();
   }
 
-  customerLocationChart = new Chart(ctx.getContext("2d"), {
-    type: "bar",
+  customerLocationChart = new Chart(ctx, {
+    type: "doughnut",
     data: {
-      labels: data.map((item) => item.location),
+      labels: data.map((item) => item.segment),
       datasets: [
         {
-          label: "Customers by Location",
           data: data.map((item) => item.count),
-          backgroundColor: "rgba(75, 192, 192, 0.7)",
-          borderColor: "rgba(75, 192, 192, 1)",
+          backgroundColor: [
+            "rgba(76, 175, 80, 0.7)",      // Green - Premium
+            "rgba(54, 162, 235, 0.7)",     // Blue - Regular
+            "rgba(255, 206, 86, 0.7)",     // Yellow - Casual
+            "rgba(153, 102, 255, 0.7)",    // Purple - New
+          ],
+          borderColor: [
+            "rgba(76, 175, 80, 1)",
+            "rgba(54, 162, 235, 1)",
+            "rgba(255, 206, 86, 1)",
+            "rgba(153, 102, 255, 1)",
+          ],
           borderWidth: 1,
         },
       ],
@@ -1315,12 +1520,19 @@ function renderCustomerLocationChart(data) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      scales: {
-        y: {
-          beginAtZero: true,
-          title: {
-            display: true,
-            text: "Number of Customers",
+      plugins: {
+        legend: {
+          position: "bottom",
+        },
+        tooltip: {
+          callbacks: {
+            label: function (context) {
+              const label = context.label || "";
+              const value = context.raw || 0;
+              const total = context.dataset.data.reduce((a, b) => a + b, 0);
+              const percentage = Math.round((value / total) * 100);
+              return `${label}: ${value} customers (${percentage}%)`;
+            },
           },
         },
       },
@@ -1328,312 +1540,36 @@ function renderCustomerLocationChart(data) {
   });
 }
 
-// Table Rendering Functions
-function renderTopProductsTable(data) {
-  const tableBody = document.querySelector("#topProductsTable tbody");
-  if (!tableBody) return;
+function renderCustomerDetailsTable(data) {
+  const tbody = document.querySelector("#topCustomersTable tbody");
+  if (!tbody) return;
 
-  tableBody.innerHTML = "";
-
-  if (data.length === 0) {
-    tableBody.innerHTML =
-      '<tr><td colspan="5" class="text-center">No products found</td></tr>';
-    return;
-  }
-
-  data.forEach((product) => {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${product.name}</td>
-      <td>${product.category}</td>
-      <td>${product.quantity.toLocaleString()}</td>
-      <td>R${product.revenue.toFixed(2)}</td>
-      <td>${product.percentage.toFixed(1)}%</td>
-    `;
-    tableBody.appendChild(row);
-  });
-}
-
-function renderPaymentDetailsTable(data) {
-  const tableBody = document.querySelector("#paymentDetailsTable tbody");
-  if (!tableBody) return;
-
-  tableBody.innerHTML = "";
+  tbody.innerHTML = "";
 
   if (data.length === 0) {
-    tableBody.innerHTML =
-      '<tr><td colspan="5" class="text-center">No payment data found</td></tr>';
+    tbody.innerHTML =
+      '<tr><td colspan="6" class="text-center">No customer data found</td></tr>';
     return;
   }
 
-  data.forEach((method) => {
-    const successRate =
-      method.count > 0 ? (method.success / method.count) * 100 : 0;
-    const avgAmount = method.count > 0 ? method.total / method.count : 0;
+  // Get top 20 customers
+  const topCustomers = data.slice(0, 20);
 
+topCustomers.forEach((customer) => {
     const row = document.createElement("tr");
     row.innerHTML = `
-      <td>${method.method.toUpperCase()}</td>
-      <td>${method.count.toLocaleString()}</td>
-      <td>${successRate.toFixed(1)}%</td>
-      <td>R${avgAmount.toFixed(2)}</td>
-      <td>R${method.total.toFixed(2)}</td>
-    `;
-    tableBody.appendChild(row);
+            <td>${escapeHtml(customer.name)}</td>
+            <td>${escapeHtml(customer.email)}</td>
+            <!-- REMOVE LOCATION COLUMN -->
+            <td>${customer.orderCount.toLocaleString()}</td>
+            <td>R${customer.totalSpent.toFixed(2)}</td>
+            <td>R${(customer.totalSpent / customer.orderCount).toFixed(2)}</td>
+            <td>${customer.lastPurchase.toLocaleDateString()}</td>
+        `;
+    tbody.appendChild(row);
   });
 }
 
-function renderProductPerformanceTable(data) {
-  const tableBody = document.querySelector("#productPerformanceTable tbody");
-  if (!tableBody) return;
-
-  tableBody.innerHTML = "";
-
-  if (data.length === 0) {
-    tableBody.innerHTML =
-      '<tr><td colspan="6" class="text-center">No product data found</td></tr>';
-    return;
-  }
-
-  data.forEach((product) => {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${product.name}</td>
-      <td>${product.category}</td>
-      <td>${product.sold.toLocaleString()}</td>
-      <td>R${product.revenue.toFixed(2)}</td>
-      <td>${product.stock.toLocaleString()}</td>
-      <td>${product.conversion.toFixed(2)}%</td>
-    `;
-    tableBody.appendChild(row);
-  });
-}
-
-function renderTopCustomersTable(data) {
-  const tableBody = document.querySelector("#topCustomersTable tbody");
-  if (!tableBody) return;
-
-  tableBody.innerHTML = "";
-
-  // Get top 10 customers
-  const topCustomers = data.slice(0, 10);
-
-  if (topCustomers.length === 0) {
-    tableBody.innerHTML =
-      '<tr><td colspan="5" class="text-center">No customer data found</td></tr>';
-    return;
-  }
-
-  topCustomers.forEach((customer) => {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${customer.name}</td>
-      <td>${customer.orders.toLocaleString()}</td>
-      <td>R${customer.totalSpent.toFixed(2)}</td>
-      <td>R${customer.avgOrder.toFixed(2)}</td>
-      <td>${
-        customer.lastPurchase
-          ? customer.lastPurchase.toLocaleDateString()
-          : "Never"
-      }</td>
-    `;
-    tableBody.appendChild(row);
-  });
-}
-
-// Export Functions
-function exportReport(event) {
-  const reportType = event.target.dataset.report;
-
-  switch (reportType) {
-    case "sales":
-      exportSalesReport();
-      break;
-    case "payment":
-      exportPaymentReport();
-      break;
-    case "product":
-      exportProductReport();
-      break;
-    case "customer":
-      exportCustomerReport();
-      break;
-  }
-}
-
-function exportSalesReport() {
-  const { jsPDF } = window.jspdf;
-  if (!jsPDF) {
-    showError("PDF export library not loaded");
-    return;
-  }
-
-  const doc = new jsPDF();
-
-  // Add title
-  doc.setFontSize(18);
-  doc.text("Amacusi Farming - Sales Report", 105, 15, { align: "center" });
-
-  // Add date range
-  doc.setFontSize(12);
-  const dateRange = `${startDateInput.value} to ${endDateInput.value}`;
-  doc.text(`Date Range: ${dateRange}`, 105, 25, { align: "center" });
-
-  // Add summary
-  doc.setFontSize(14);
-  doc.text("Summary", 14, 35);
-
-  doc.setFontSize(12);
-  doc.text(`Total Orders: ${totalOrdersEl.textContent}`, 14, 45);
-  doc.text(`Total Revenue: ${totalRevenueEl.textContent}`, 14, 55);
-  doc.text(`Products Sold: ${totalProductsSoldEl.textContent}`, 14, 65);
-  doc.text(`Customers: ${totalCustomersEl.textContent}`, 14, 75);
-
-  // Add top products table
-  doc.setFontSize(14);
-  doc.text("Top Selling Products", 14, 90);
-
-  const topProductsTable = document.getElementById("topProductsTable");
-  doc.autoTable({
-    html: topProductsTable,
-    startY: 95,
-    theme: "grid",
-    headStyles: {
-      fillColor: [76, 175, 80],
-      textColor: 255,
-    },
-  });
-
-  // Save the PDF
-  doc.save(
-    `amacusi-sales-report-${new Date().toISOString().split("T")[0]}.pdf`
-  );
-}
-
-function exportPaymentReport() {
-  const { jsPDF } = window.jspdf;
-  if (!jsPDF) {
-    showError("PDF export library not loaded");
-    return;
-  }
-
-  const doc = new jsPDF();
-
-  // Add title
-  doc.setFontSize(18);
-  doc.text("Amacusi Farming - Payment Report", 105, 15, { align: "center" });
-
-  // Add date range
-  doc.setFontSize(12);
-  const dateRange = `${startDateInput.value} to ${endDateInput.value}`;
-  doc.text(`Date Range: ${dateRange}`, 105, 25, { align: "center" });
-
-  // Add payment method details table
-  doc.setFontSize(14);
-  doc.text("Payment Method Analysis", 14, 35);
-
-  const paymentDetailsTable = document.getElementById("paymentDetailsTable");
-  doc.autoTable({
-    html: paymentDetailsTable,
-    startY: 40,
-    theme: "grid",
-    headStyles: {
-      fillColor: [54, 162, 235],
-      textColor: 255,
-    },
-  });
-
-  // Save the PDF
-  doc.save(
-    `amacusi-payment-report-${new Date().toISOString().split("T")[0]}.pdf`
-  );
-}
-
-function exportProductReport() {
-  const { jsPDF } = window.jspdf;
-  if (!jsPDF) {
-    showError("PDF export library not loaded");
-    return;
-  }
-
-  const doc = new jsPDF();
-
-  // Add title
-  doc.setFontSize(18);
-  doc.text("Amacusi Farming - Product Performance Report", 105, 15, {
-    align: "center",
-  });
-
-  // Add date range
-  doc.setFontSize(12);
-  const dateRange = `${startDateInput.value} to ${endDateInput.value}`;
-  doc.text(`Date Range: ${dateRange}`, 105, 25, { align: "center" });
-
-  // Add product performance table
-  doc.setFontSize(14);
-  doc.text("Product Performance", 14, 35);
-
-  const productPerformanceTable = document.getElementById(
-    "productPerformanceTable"
-  );
-  doc.autoTable({
-    html: productPerformanceTable,
-    startY: 40,
-    theme: "grid",
-    headStyles: {
-      fillColor: [255, 159, 64],
-      textColor: 255,
-    },
-  });
-
-  // Save the PDF
-  doc.save(
-    `amacusi-product-report-${new Date().toISOString().split("T")[0]}.pdf`
-  );
-}
-
-function exportCustomerReport() {
-  const { jsPDF } = window.jspdf;
-  if (!jsPDF) {
-    showError("PDF export library not loaded");
-    return;
-  }
-
-  const doc = new jsPDF();
-
-  // Add title
-  doc.setFontSize(18);
-  doc.text("Amacusi Farming - Customer Insights Report", 105, 15, {
-    align: "center",
-  });
-
-  // Add date range
-  doc.setFontSize(12);
-  const dateRange = `${startDateInput.value} to ${endDateInput.value}`;
-  doc.text(`Date Range: ${dateRange}`, 105, 25, { align: "center" });
-
-  // Add top customers table
-  doc.setFontSize(14);
-  doc.text("Top Customers", 14, 35);
-
-  const topCustomersTable = document.getElementById("topCustomersTable");
-  doc.autoTable({
-    html: topCustomersTable,
-    startY: 40,
-    theme: "grid",
-    headStyles: {
-      fillColor: [153, 102, 255],
-      textColor: 255,
-    },
-  });
-
-  // Save the PDF
-  doc.save(
-    `amacusi-customer-report-${new Date().toISOString().split("T")[0]}.pdf`
-  );
-}
-
-// Utility Functions
 function formatChartDate(dateString) {
   const date = new Date(dateString);
   return date.toLocaleDateString("en-US", {
@@ -1642,80 +1578,120 @@ function formatChartDate(dateString) {
   });
 }
 
-function showError(message) {
-  const errorDiv = document.createElement("div");
-  errorDiv.className = "error-message";
-  errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
-  document.body.appendChild(errorDiv);
-
-  // Add styles if not already present
-  if (!document.querySelector("style#error-styles")) {
-    const style = document.createElement("style");
-    style.id = "error-styles";
-    style.textContent = `
-      .error-message {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: #e74c3c;
-        color: white;
-        padding: 15px 20px;
-        border-radius: 5px;
-        z-index: 10000;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        max-width: 400px;
-      }
-      .error-message i {
-        font-size: 18px;
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
-  setTimeout(() => {
-    errorDiv.style.opacity = "0";
-    errorDiv.style.transition = "opacity 0.5s";
-    setTimeout(() => errorDiv.remove(), 500);
-  }, 3000);
+function formatMonthYear(monthYear) {
+  const [year, month] = monthYear.split("-");
+  const date = new Date(year, month - 1);
+  return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
 }
 
-function showSuccess(message) {
-  const successDiv = document.createElement("div");
-  successDiv.className = "success-message";
-  successDiv.innerHTML = `<i class="fas fa-check-circle"></i> ${message}`;
-  document.body.appendChild(successDiv);
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
 
-  // Add styles if not already present
-  if (!document.querySelector("style#success-styles")) {
-    const style = document.createElement("style");
-    style.id = "success-styles";
-    style.textContent = `
-      .success-message {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: #27ae60;
-        color: white;
-        padding: 15px 20px;
-        border-radius: 5px;
-        z-index: 10000;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        max-width: 400px;
-      }
-      .success-message i {
-        font-size: 18px;
-      }
-    `;
-    document.head.appendChild(style);
+function exportReport(event) {
+  const reportType = event.target.dataset.report;
+  
+  // Get the current date for the filename
+  const now = new Date();
+  const dateStr = now.toISOString().split("T")[0];
+  const timeStr = now.toTimeString().split(" ")[0].replace(/:/g, "-");
+  const filename = `${reportType}_report_${dateStr}_${timeStr}`;
+
+  exportToCSV(reportType, filename);
+}
+
+function exportToCSV(reportType, filename) {
+  let csvContent = "";
+  let table;
+
+  switch (reportType) {
+    case "sales":
+      table = document.getElementById("topProductsTable");
+      break;
+    case "payment":
+      table = document.getElementById("paymentDetailsTable");
+      break;
+    case "product":
+      table = document.getElementById("productPerformanceTable");
+      break;
+    case "customer":
+      table = document.getElementById("topCustomersTable");
+      break;
   }
 
+  if (!table) {
+    showError("No data available to export");
+    return;
+  }
+
+  // Get headers
+  const headers = [];
+  table.querySelectorAll("thead th").forEach((th) => {
+    headers.push(th.textContent.trim());
+  });
+  csvContent += headers.join(",") + "\n";
+
+  // Get rows
+  table.querySelectorAll("tbody tr").forEach((tr) => {
+    const row = [];
+    tr.querySelectorAll("td").forEach((td) => {
+      let text = td.textContent.trim();
+      // Escape commas and quotes in CSV
+      if (text.includes(",") || text.includes('"')) {
+        text = '"' + text.replace(/"/g, '""') + '"';
+      }
+      row.push(text);
+    });
+    csvContent += row.join(",") + "\n";
+  });
+
+  // Create download link
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `${filename}.csv`);
+  link.style.display = "none";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function showError(message) {
+  // Create or show error notification
+  let errorEl = document.getElementById("errorNotification");
+  if (!errorEl) {
+    errorEl = document.createElement("div");
+    errorEl.id = "errorNotification";
+    errorEl.className = "error-notification";
+    errorEl.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #f44336;
+            color: white;
+            padding: 15px;
+            border-radius: 4px;
+            z-index: 10000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        `;
+    document.body.appendChild(errorEl);
+  }
+
+  errorEl.textContent = message;
+  errorEl.style.display = "block";
+
+  // Auto hide after 5 seconds
   setTimeout(() => {
-    successDiv.style.opacity = "0";
-    successDiv.style.transition = "opacity 0.5s";
-    setTimeout(() => successDiv.remove(), 500);
-  }, 3000);
+    errorEl.style.display = "none";
+  }, 5000);
+}
+
+// Initialize reports when DOM is loaded
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initReports);
+} else {
+  initReports();
 }

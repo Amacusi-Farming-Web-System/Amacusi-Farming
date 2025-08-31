@@ -45,6 +45,11 @@ const paymentSubtotalDisplay = document.getElementById("payment-subtotal");
 const deliveryFeeDisplay = document.getElementById("delivery-fee-display");
 const paymentTotalDisplay = document.getElementById("payment-total");
 
+// PayPal container
+const paypalButtonContainer = document.getElementById(
+  "paypal-button-container"
+);
+
 // ======================
 // State
 // ======================
@@ -53,6 +58,7 @@ let unsubscribeCart = null;
 let deliveryFee = 0;
 let userId = null;
 let selectedAddress = { street: "", city: "", province: "" };
+let paypalButtons = null;
 
 // ======================
 // Helper Functions
@@ -70,6 +76,9 @@ function generateOrderNumber() {
 }
 
 function showToast(message, type = "error") {
+  // Remove existing toasts
+  document.querySelectorAll(".toast").forEach((toast) => toast.remove());
+
   const toast = document.createElement("div");
   toast.className = `toast ${type}`;
   toast.textContent = message;
@@ -79,7 +88,11 @@ function showToast(message, type = "error") {
     toast.classList.add("show");
     setTimeout(() => {
       toast.classList.remove("show");
-      setTimeout(() => document.body.removeChild(toast), 300);
+      setTimeout(() => {
+        if (toast.parentNode) {
+          document.body.removeChild(toast);
+        }
+      }, 300);
     }, 3000);
   }, 100);
 }
@@ -101,7 +114,7 @@ async function requireLoggedInAndRegistered(redirectToSignUp = true) {
   if (!auth.currentUser) {
     if (redirectToSignUp) {
       showToast("You must sign in to continue.");
-      window.location.href = `../pages/signUp.html?redirect=${encodeURIComponent(
+      window.location.href = `../Pages/signUp.html?redirect=${encodeURIComponent(
         window.location.href
       )}`;
     }
@@ -113,7 +126,7 @@ async function requireLoggedInAndRegistered(redirectToSignUp = true) {
   if (!registered) {
     if (redirectToSignUp) {
       showToast("Please sign in with Google to continue.");
-      window.location.href = `../pages/signUp.html?redirect=${encodeURIComponent(
+      window.location.href = `../Pages/signUp.html?redirect=${encodeURIComponent(
         window.location.href
       )}`;
     }
@@ -129,10 +142,20 @@ onAuthStateChanged(auth, (user) => {
     userId = user.uid;
     if (guestCheckoutMessage) guestCheckoutMessage.style.display = "none";
     if (checkoutBtn) checkoutBtn.disabled = false;
+
+    // Reinitialize PayPal buttons for authenticated users
+    if (paypalButtonContainer && paypalButtonContainer.innerHTML === "") {
+      setupPayPalButton();
+    }
   } else {
     userId = null;
     if (guestCheckoutMessage) guestCheckoutMessage.style.display = "block";
     if (checkoutBtn) checkoutBtn.disabled = false;
+
+    // Clear PayPal buttons for non-authenticated users
+    if (paypalButtonContainer) {
+      paypalButtonContainer.innerHTML = "";
+    }
   }
 });
 
@@ -191,7 +214,7 @@ function renderCartItems() {
     .map(
       (item) => `
     <div class="cart-item" data-id="${item.id}">
-      <img src="${item.imageUrl || "../images/default-product.jpg"}" alt="${
+      <img src="${item.imageUrl || "../Images/default-product.jpg"}" alt="${
         item.name
       }" class="cart-item-img" />
       <div class="cart-item-details">
@@ -234,6 +257,13 @@ function attachCartItemEvents() {
     input.addEventListener("input", (e) => {
       e.target.value = Math.max(1, parseInt(e.target.value) || 1);
       handleQuantityInputChange(e);
+    });
+
+    input.addEventListener("blur", (e) => {
+      if (!e.target.value || parseInt(e.target.value) < 1) {
+        e.target.value = 1;
+        handleQuantityInputChange(e);
+      }
     });
   });
 
@@ -362,6 +392,23 @@ async function removeItemFromCart(e) {
 // Update cart in Firestore
 // ======================
 async function updateCartOnServer() {
+  // Validate stock before updating
+  for (const item of cart) {
+    const productRef = doc(db, "products", item.id);
+    const productSnap = await getDoc(productRef);
+    const availableStock = productSnap.exists() ? productSnap.data().stock : 0;
+
+    if (item.quantity > availableStock) {
+      showToast(`Only ${availableStock} available for ${item.name}`);
+      item.quantity = availableStock;
+
+      // If stock is 0, remove the item
+      if (availableStock === 0) {
+        cart = cart.filter((cartItem) => cartItem.id !== item.id);
+      }
+    }
+  }
+
   const cartId = sessionStorage.getItem("cartId");
   if (!cartId) {
     console.warn("No cartId in sessionStorage; skipping update.");
@@ -452,6 +499,161 @@ async function validateStockBeforeCheckout() {
 }
 
 // ======================
+// PayPal Integration
+// ======================
+function setupPayPalButton() {
+  if (!paypalButtonContainer || !window.paypal) return;
+
+  try {
+    paypalButtonContainer.innerHTML = "";
+
+    paypalButtons = window.paypal.Buttons({
+      createOrder: function (data, actions) {
+        const subtotal = calculateSubtotal();
+        const isPickup = pickupCheckbox?.checked || false;
+        const province = selectedAddress.province || "other";
+
+        const deliveryFee = isPickup
+          ? 0
+          : province.toLowerCase() === "mpumalanga"
+          ? 0
+          : 100;
+
+        const total = subtotal + deliveryFee;
+
+        return actions.order.create({
+          purchase_units: [
+            {
+              amount: {
+                value: total.toFixed(2),
+                currency_code: "USD",
+                breakdown: {
+                  item_total: {
+                    value: subtotal.toFixed(2),
+                    currency_code: "USD",
+                  },
+                  shipping: {
+                    value: deliveryFee.toFixed(2),
+                    currency_code: "USD",
+                  },
+                },
+              },
+              items: cart.map((item) => ({
+                name: item.name,
+                unit_amount: {
+                  value: item.price.toFixed(2),
+                  currency_code: "USD",
+                },
+                quantity: item.quantity,
+              })),
+            },
+          ],
+          application_context: {
+            shipping_preference: "NO_SHIPPING",
+          },
+        });
+      },
+      onApprove: function (data, actions) {
+        return actions.order.capture().then(function (details) {
+          completePayPalOrder(details);
+        });
+      },
+      onError: function (err) {
+        console.error("PayPal error:", err);
+        showToast(
+          "PayPal payment failed. Please try again or use a different payment method."
+        );
+      },
+      onCancel: function (data) {
+        showToast("PayPal payment was cancelled.");
+      },
+    });
+
+    paypalButtons.render(paypalButtonContainer);
+  } catch (error) {
+    console.error("Error setting up PayPal button:", error);
+    paypalButtonContainer.innerHTML =
+      '<p class="error">PayPal is currently unavailable. Please use cash on delivery.</p>';
+  }
+}
+
+async function completePayPalOrder(details) {
+  try {
+    setLoadingState(true);
+
+    const stockValid = await validateStockBeforeCheckout();
+    if (!stockValid) {
+      if (paymentModal) paymentModal.style.display = "none";
+      return;
+    }
+
+    const isPickup = pickupCheckbox?.checked || false;
+    const { street, city, province } = isPickup ? {} : selectedAddress;
+    const batch = writeBatch(db);
+    const uid = auth.currentUser.uid;
+    const orderId = generateOrderNumber();
+
+    cart.forEach((item) => {
+      const productRef = doc(db, "products", item.id);
+      batch.update(productRef, { stock: increment(-item.quantity) });
+    });
+
+    const subtotal = calculateSubtotal();
+    const fee = isPickup
+      ? 0
+      : province.toLowerCase() === "mpumalanga"
+      ? 0
+      : 100;
+
+    const orderData = {
+      id: orderId,
+      userId: uid,
+      userEmail: auth.currentUser.email,
+      userName: auth.currentUser.displayName || "Customer",
+      items: cart.map((item) => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        imageUrl: item.imageUrl || null,
+      })),
+      subtotal,
+      deliveryFee: fee,
+      total: subtotal + fee,
+      status: "pending",
+      paymentMethod: "paypal",
+      paymentStatus: "completed",
+      paymentId: details.id,
+      payerEmail: details.payer.email_address,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      isPickup,
+    };
+
+    if (!isPickup) {
+      orderData.address = { street, city, province };
+    }
+
+    batch.set(doc(db, "orders", orderId), orderData);
+
+    const cartId = sessionStorage.getItem("cartId");
+    if (cartId) {
+      batch.delete(doc(db, "carts", cartId));
+      sessionStorage.removeItem("cartId");
+    }
+
+    await batch.commit();
+    showOrderConfirmation(orderId);
+  } catch (error) {
+    console.error("PayPal order processing failed:", error);
+    showToast(`Failed to process PayPal order: ${error.message}`);
+    if (paymentModal) paymentModal.style.display = "none";
+  } finally {
+    setLoadingState(false);
+  }
+}
+
+// ======================
 // Checkout Flow
 // ======================
 function setupSecureCheckout() {
@@ -475,7 +677,7 @@ function setupSecureCheckout() {
       const registered = await isUserRegistered(uid);
       if (!registered) {
         showToast("Please complete Google sign-in to continue.");
-        window.location.href = `../pages/signUp.html?redirect=${encodeURIComponent(
+        window.location.href = `../Pages/signUp.html?redirect=${encodeURIComponent(
           window.location.href
         )}`;
         return;
@@ -543,6 +745,13 @@ function setupSecureCheckout() {
           .querySelectorAll(".payment-method")
           .forEach((m) => m.classList.remove("selected"));
         method.classList.add("selected");
+
+        // Show/hide PayPal button based on selection
+        if (method.dataset.method === "paypal" && paypalButtonContainer) {
+          paypalButtonContainer.style.display = "block";
+        } else if (paypalButtonContainer) {
+          paypalButtonContainer.style.display = "none";
+        }
       } catch (err) {
         showToast("Please sign in to select a payment method.");
       }
@@ -566,6 +775,9 @@ function setupSecureCheckout() {
 
         if (selectedMethod === "cash") {
           await completeCashOrder();
+        } else if (selectedMethod === "paypal") {
+          // PayPal is handled by its own button
+          showToast("Please complete the PayPal payment above.");
         } else {
           showToast("This payment method is coming soon.");
         }
@@ -606,7 +818,7 @@ async function completeCashOrder() {
     const { street, city, province } = isPickup ? {} : selectedAddress;
     const batch = writeBatch(db);
     const uid = auth.currentUser.uid;
-    const orderId = generateOrderNumber(); // Now generates "AM" followed by 6 numbers
+    const orderId = generateOrderNumber();
 
     cart.forEach((item) => {
       const productRef = doc(db, "products", item.id);
@@ -622,8 +834,8 @@ async function completeCashOrder() {
     const orderData = {
       id: orderId,
       userId: uid,
-      userEmail: auth.currentUser.email, // Added: Store user email
-      userName: auth.currentUser.displayName || "Customer", // Added: Store user name
+      userEmail: auth.currentUser.email,
+      userName: auth.currentUser.displayName || "Customer",
       items: cart.map((item) => ({
         id: item.id,
         name: item.name,
@@ -695,6 +907,10 @@ function showOrderConfirmation(orderId) {
   if (paymentModal) paymentModal.style.display = "none";
   if (orderIdSpan) orderIdSpan.textContent = orderId;
   if (confirmationModal) confirmationModal.style.display = "block";
+
+  // Clear cart UI
+  cart = [];
+  renderEmptyCart();
 }
 
 // ======================
@@ -704,6 +920,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
     await initCart();
     setupSecureCheckout();
+
+    // Initialize PayPal button if user is logged in
+    if (auth.currentUser) {
+      setTimeout(() => {
+        setupPayPalButton();
+      }, 1000);
+    }
 
     window.addEventListener("click", (e) => {
       if (e.target === addressModal) addressModal.style.display = "none";

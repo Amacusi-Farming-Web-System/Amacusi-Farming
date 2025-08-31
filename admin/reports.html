@@ -14,9 +14,105 @@
     />
     <link rel="stylesheet" href="../admin/admin.css" />
     <link rel="stylesheet" href="../admin/reports.css" />
+
+    <!-- Chart.js and PDF libraries -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+      /* Additional styles for better responsiveness */
+      .filter-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        align-items: end;
+      }
+
+      .filter-group {
+        flex: 1;
+        min-width: 200px;
+      }
+
+      .date-inputs {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .chart-container {
+        position: relative;
+        height: 400px;
+        margin-bottom: 30px;
+      }
+
+      .half-width {
+        width: 48%;
+        display: inline-block;
+      }
+
+      @media (max-width: 768px) {
+        .filter-group {
+          min-width: 100%;
+        }
+
+        .half-width {
+          width: 100%;
+        }
+      }
+
+      /* Loading indicator */
+      .report-loading {
+        display: none;
+        text-align: center;
+        padding: 40px;
+        color: #4caf50;
+      }
+
+      .report-loading i {
+        font-size: 2rem;
+        margin-bottom: 15px;
+      }
+
+      /* Error message styling */
+      .error-message {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #e74c3c;
+        color: white;
+        padding: 15px 20px;
+        border-radius: 5px;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        max-width: 400px;
+      }
+
+      .error-message i {
+        font-size: 18px;
+      }
+
+      .success-message {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #27ae60;
+        color: white;
+        padding: 15px 20px;
+        border-radius: 5px;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        max-width: 400px;
+      }
+
+      .success-message i {
+        font-size: 18px;
+      }
+    </style>
   </head>
   <body>
     <div class="admin-container">
@@ -40,10 +136,12 @@
               >
             </li>
             <li>
-              <a href="#"><i class="fas fa-box-open"></i> Products</a>
+              <a href="#"><i class="fas fa-box-open"></i> Products</a
+              >
             </li>
             <li>
-              <a href="#"><i class="fas fa-users"></i> Customers</a>
+              <a href="#"><i class="fas fa-users"></i> Customers</a
+              >
             </li>
             <li>
               <a href="reports.html" class="active"
@@ -51,7 +149,8 @@
               >
             </li>
             <li>
-              <a href="#"><i class="fas fa-cog"></i> Settings</a>
+              <a href="#"><i class="fas fa-cog"></i> Settings</a
+              >
             </li>
           </ul>
         </nav>
@@ -154,6 +253,12 @@
             </button>
           </div>
         </section>
+
+        <!-- Loading indicator -->
+        <div id="reportLoading" class="report-loading">
+          <i class="fas fa-spinner fa-spin"></i>
+          <p>Generating report, please wait...</p>
+        </div>
 
         <!-- Report Summary Cards -->
         <div class="report-summary-cards">
@@ -291,14 +396,6 @@
           <div class="report-section" id="productReport" style="display: none">
             <div class="section-header">
               <h2><i class="fas fa-box-open"></i> Product Performance</h2>
-              <div class="section-actions">
-                <button
-                  class="btn btn-outline export-btn"
-                  data-report="product"
-                >
-                  <i class="fas fa-file-export"></i> Export
-                </button>
-              </div>
             </div>
 
             <div class="chart-container">
@@ -330,10 +427,7 @@
             <div class="section-header">
               <h2><i class="fas fa-users"></i> Customer Insights</h2>
               <div class="section-actions">
-                <button
-                  class="btn btn-outline export-btn"
-                  data-report="customer"
-                >
+                <button class="btn btn-outline export-btn" data-report="customer">
                   <i class="fas fa-file-export"></i> Export
                 </button>
               </div>
@@ -347,8 +441,13 @@
               <canvas id="customerAcquisitionChart"></canvas>
             </div>
 
-            <div class="chart-container half-width">
-              <canvas id="customerLocationChart"></canvas>
+           <div class="chart-container half-width">
+  <h4>Customer Value Segmentation</h4>
+  <canvas id="customerValueSegmentationChart"></canvas>
+</div>
+
+            <div class="chart-container">
+              <canvas id="customerCategorySpendingChart"></canvas>
             </div>
 
             <div class="table-container">
@@ -357,10 +456,29 @@
                 <thead>
                   <tr>
                     <th>Customer</th>
+                    <th>Email</th>
                     <th>Orders</th>
                     <th>Total Spent</th>
                     <th>Avg. Order</th>
                     <th>Last Purchase</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- Will be populated by JavaScript -->
+                </tbody>
+              </table>
+            </div>
+
+            <div class="table-container">
+              <h3>Customer Category Spending</h3>
+              <table class="report-table" id="customerCategorySpendingTable">
+                <thead>
+                  <tr>
+                    <th>Customer Category</th>
+                    <th>Total Spent</th>
+                    <th>Average Order Value</th>
+                    <th>Orders Count</th>
+                    <th>% of Total Revenue</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -373,7 +491,47 @@
       </main>
     </div>
 
+    <!-- Import Firebase configuration -->
+    <script type="module">
+      // Import Firebase functions
+      import {
+        collection,
+        getDocs,
+        query,
+        where,
+        orderBy,
+        Timestamp,
+        limit as fsLimit,
+      } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+      // Import Firebase configuration
+      import {
+        db,
+        COLLECTIONS,
+        ORDER_STATUS,
+        PAYMENT_METHODS,
+        PAYMENT_STATUS,
+      } from "../admin/firebase.js";
+
+      // Make these available globally for the report functionality
+      window.db = db;
+      window.COLLECTIONS = COLLECTIONS;
+      window.ORDER_STATUS = ORDER_STATUS;
+      window.PAYMENT_METHODS = PAYMENT_METHODS;
+      window.PAYMENT_STATUS = PAYMENT_STATUS;
+      window.firestore = {
+        collection,
+        getDocs,
+        query,
+        where,
+        orderBy,
+        Timestamp,
+        fsLimit,
+      };
+    </script>
+
+    <!-- Include the fixed report JavaScript -->
     <script type="module" src="../admin/report.js"></script>
-    <script src="../admin/admin.js"></script>
+    <script type="module" src="../admin/admin.js"></script>
   </body>
 </html>

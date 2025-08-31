@@ -18,9 +18,9 @@
       <nav>
         <ul>
           <li><a href="../index.html">Home</a></li>
-          <li><a href="products.html">Products</a></li>
-          <li><a href="about.html">About Us</a></li>
-          <li><a href="contact.html">Contact</a></li>
+          <li><a href="../Pages/Products.html">Products</a></li>
+          <li><a href="../Pages/about.html">About Us</a></li>
+          <li><a href="../Pages/contact.html">Contact</a></li>
           <li><a href="../Pages/profile.html" class="active">My Profile</a></li>
         </ul>
       </nav>
@@ -44,9 +44,7 @@
             <h2>Items</h2>
             <span id="item-count">0 items</span>
           </div>
-
           <div id="cart-items-list">
-            <!-- Cart items will be dynamically inserted here -->
             <div class="empty-cart">
               <i class="fas fa-shopping-cart"></i>
               <p>Your cart is empty</p>
@@ -95,85 +93,50 @@
       </div>
     </main>
 
-    <!-- Checkout Modal -->
-    <div id="checkout-modal" class="modal">
-      <div class="modal-content">
-        <span class="close-modal">&times;</span>
-        <h2>Complete Your Order</h2>
-
-        <form id="checkout-form">
-          <div class="form-group">
-            <label for="name">Full Name</label>
-            <input type="text" id="name" required />
-          </div>
-
-          <div class="form-group">
-            <label for="email">Email</label>
-            <input type="email" id="email" required />
-          </div>
-
-          <div class="form-group">
-            <label for="phone">Phone Number</label>
-            <input type="tel" id="phone" required />
-          </div>
-
-          <div class="form-group">
-            <label for="address">Delivery Address</label>
-            <textarea id="address" rows="3" required></textarea>
-          </div>
-
-          <div class="form-group">
-            <label for="payment">Payment Method</label>
-            <select id="payment" required>
-              <option value="">Select payment method</option>
-              <option value="card">Credit/Debit Card</option>
-              <option value="eft">EFT/Bank Transfer</option>
-              <option value="cash">Cash on Delivery</option>
-            </select>
-          </div>
-
-          <div class="form-actions">
-            <button type="button" class="btn btn-outline" id="cancel-checkout">
-              Cancel
-            </button>
-            <button type="submit" class="btn btn-primary">Place Order</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- Add these modals to your cart.html before closing body tag -->
-
     <!-- Address Modal -->
     <div id="address-modal" class="modal">
       <div class="modal-content">
         <span class="close-modal">&times;</span>
         <h2>Delivery Address</h2>
-        <form id="address-form">
-          <div class="form-group">
-            <label for="street">Street Address</label>
-            <input type="text" id="street" required />
-          </div>
-          <div class="form-group">
-            <label for="city">City/Town</label>
-            <input type="text" id="city" required />
-          </div>
-          <div class="form-group">
-            <label for="province">Province</label>
-            <select id="province" required>
-              <option value="">Select Province</option>
-              <option value="mpumalanga">Mpumalanga (Free Delivery)</option>
-              <option value="other">Other Province (R100 Delivery Fee)</option>
-            </select>
-          </div>
-          <button type="button" id="confirm-address" class="btn">
-            Confirm Address
-          </button>
-        </form>
+
+        <div class="form-group">
+          <label for="street">Street Address</label>
+          <input
+            type="text"
+            id="street"
+            required
+            placeholder="Enter your street address"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="city">City</label>
+          <input type="text" id="city" required placeholder="Enter your city" />
+        </div>
+
+        <div class="form-group">
+          <label for="province">Province</label>
+          <select id="province" required>
+            <option value="">Select Province</option>
+            <option value="Mpumalanga">Mpumalanga</option>
+            <option value="Gauteng">Gauteng</option>
+            <option value="Limpopo">Limpopo</option>
+            <option value="North West">North West</option>
+            <option value="Free State">Free State</option>
+            <option value="KwaZulu-Natal">KwaZulu-Natal</option>
+            <option value="Eastern Cape">Eastern Cape</option>
+            <option value="Western Cape">Western Cape</option>
+            <option value="Northern Cape">Northern Cape</option>
+          </select>
+        </div>
+
+        <button id="confirm-address" class="btn btn-primary">
+          Confirm Address
+        </button>
       </div>
     </div>
 
-    <!-- Payment Modal -->
+    <!-- Checkout / Payment Modal -->
     <div id="payment-modal" class="modal">
       <div class="modal-content">
         <span class="close-modal">&times;</span>
@@ -197,14 +160,13 @@
             <i class="fas fa-money-bill-wave"></i>
             <span>Cash on Delivery</span>
           </div>
-          <div class="payment-method" data-method="eft">
-            <i class="fas fa-university"></i>
-            <span>EFT/Bank Transfer</span>
-          </div>
         </div>
 
+        <!-- PayPal Button -->
+        <div id="paypal-button-container" style="margin-top: 20px"></div>
+
         <button id="confirm-payment" class="btn">Complete Order</button>
-        <!-- Add this near the checkout button -->
+
         <div
           id="guest-checkout-message"
           style="
@@ -243,16 +205,14 @@
         </p>
         <p>Order ID: <span id="order-id"></span></p>
         <div class="confirmation-actions">
-          <a href="products.html" class="btn">Continue Shopping</a>
-          <a href="index.html" class="btn btn-outline">Back to Home</a>
+          <a href="../Pages/products.html" class="btn">Continue Shopping</a>
+          <a href="../index.html" class="btn btn-outline">Back to Home</a>
         </div>
       </div>
     </div>
 
-    <footer class="footer-with-bg">
-      <!-- Your existing footer content -->
-    </footer>
-
+    <!-- PayPal SDK (Sandbox) -->
+    <script src="https://www.paypal.com/sdk/js?client-id=ATakrLwKAcN_2qKEz5gmggEkUlNdZT2oOwPC2m9NV-CpRAb22Rab3kYTaMPkas36s2c2b8UsJTMAukK4&currency=USD"></script>
     <script type="module" src="../cart.js"></script>
     <script src="../logInScripts/firebaseAuth.js" type="module"></script>
   </body>
