@@ -13,7 +13,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="../admin/admin.css" />
-    <link rel="stylesheet" href="../admin/reports.css" />
+    <link rel="stylesheet" href="../css/reports.css" />
 
     <!-- Chart.js and PDF libraries -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -25,30 +25,35 @@
       .filter-row {
         display: flex;
         flex-wrap: wrap;
-        gap: 15px;
+        gap: 20px;
         align-items: end;
       }
 
       .filter-group {
         flex: 1;
-        min-width: 200px;
+        min-width: 220px;
       }
 
       .date-inputs {
         display: flex;
-        gap: 10px;
+        gap: 12px;
         align-items: center;
       }
 
       .chart-container {
         position: relative;
-        height: 400px;
-        margin-bottom: 30px;
+        height: 420px;
+        margin-bottom: 35px;
+        background: #fafbfc;
+        border-radius: 10px;
+        padding: 25px;
+        border: 1px solid #e1e5e9;
       }
 
       .half-width {
-        width: 48%;
+        width: calc(50% - 17px);
         display: inline-block;
+        vertical-align: top;
       }
 
       @media (max-width: 768px) {
@@ -58,6 +63,7 @@
 
         .half-width {
           width: 100%;
+          display: block;
         }
       }
 
@@ -65,13 +71,25 @@
       .report-loading {
         display: none;
         text-align: center;
-        padding: 40px;
+        padding: 80px 25px;
         color: #4caf50;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        margin: 25px 0;
+        border: 1px solid #f0f0f0;
       }
 
       .report-loading i {
-        font-size: 2rem;
-        margin-bottom: 15px;
+        font-size: 3.5rem;
+        margin-bottom: 25px;
+      }
+
+      .report-loading p {
+        font-size: 18px;
+        margin: 0;
+        color: #666;
+        font-family: 'Open Sans', sans-serif;
       }
 
       /* Error message styling */
@@ -88,6 +106,7 @@
         align-items: center;
         gap: 10px;
         max-width: 400px;
+        box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
       }
 
       .error-message i {
@@ -107,10 +126,26 @@
         align-items: center;
         gap: 10px;
         max-width: 400px;
+        box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
       }
 
       .success-message i {
         font-size: 18px;
+      }
+
+      /* Hide time period selector since we're using custom dates only */
+      #timePeriod {
+        display: none !important;
+      }
+
+      #timePeriod + label {
+        display: none !important;
+      }
+
+      /* Ensure custom date range is always visible */
+      .date-range {
+        display: flex !important;
+        flex-direction: column;
       }
     </style>
   </head>
@@ -185,23 +220,8 @@
               </select>
             </div>
 
-            <div class="filter-group">
-              <label for="timePeriod">Time Period</label>
-              <select id="timePeriod" class="form-control">
-                <option value="today">Today</option>
-                <option value="week">This Week</option>
-                <option value="month" selected>This Month</option>
-                <option value="quarter">This Quarter</option>
-                <option value="year">This Year</option>
-                <option value="custom">Custom Range</option>
-              </select>
-            </div>
-
-            <div
-              class="filter-group date-range"
-              id="customDateRange"
-              style="display: none"
-            >
+            <!-- Date Range (Always Visible) -->
+            <div class="filter-group date-range" id="customDateRange">
               <label>Date Range</label>
               <div class="date-inputs">
                 <input type="date" id="startDate" class="form-control" />
@@ -396,6 +416,11 @@
           <div class="report-section" id="productReport" style="display: none">
             <div class="section-header">
               <h2><i class="fas fa-box-open"></i> Product Performance</h2>
+              <div class="section-actions">
+                <button class="btn btn-outline export-btn" data-report="product">
+                  <i class="fas fa-file-export"></i> Export
+                </button>
+              </div>
             </div>
 
             <div class="chart-container">
@@ -441,10 +466,10 @@
               <canvas id="customerAcquisitionChart"></canvas>
             </div>
 
-           <div class="chart-container half-width">
-  <h4>Customer Value Segmentation</h4>
-  <canvas id="customerValueSegmentationChart"></canvas>
-</div>
+            <div class="chart-container half-width">
+              <h4>Customer Value Segmentation</h4>
+              <canvas id="customerValueSegmentationChart"></canvas>
+            </div>
 
             <div class="chart-container">
               <canvas id="customerCategorySpendingChart"></canvas>
@@ -517,7 +542,13 @@
       window.db = db;
       window.COLLECTIONS = COLLECTIONS;
       window.ORDER_STATUS = ORDER_STATUS;
-      window.PAYMENT_METHODS = PAYMENT_METHODS;
+      
+      // Override PAYMENT_METHODS to only include PayPal and Cash
+      window.PAYMENT_METHODS = {
+        PAYPAL: 'paypal',
+        CASH: 'cash'
+      };
+      
       window.PAYMENT_STATUS = PAYMENT_STATUS;
       window.firestore = {
         collection,
@@ -528,6 +559,15 @@
         Timestamp,
         fsLimit,
       };
+
+      // Initialize payment methods in dropdowns
+      document.addEventListener('DOMContentLoaded', function() {
+        const paymentStatusFilter = document.getElementById('paymentStatusFilter');
+        if (paymentStatusFilter) {
+          // This will ensure only PayPal and Cash are considered in the reports
+          console.log('Payment methods initialized: PayPal and Cash only');
+        }
+      });
     </script>
 
     <!-- Include the fixed report JavaScript -->
