@@ -26,6 +26,12 @@ const printOrderBtn = document.getElementById("printOrderBtn");
 
 let allOrders = [];
 
+// Helper function to capitalize status text
+function capitalizeStatus(status) {
+  if (!status) return '';
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
 // Initialize order management
 export function initOrderManagement() {
   try {
@@ -297,7 +303,7 @@ function renderOrderRow(order) {
     }
   }
 
-  const displayStatus = order.orderStatus || order.status || "pending";
+  const displayStatus = capitalizeStatus(order.orderStatus || order.status || "pending");
   const deliveryTypeBadge = order.isPickup
     ? '<span class="delivery-badge pickup"><i class="fas fa-store"></i> Pickup</span>'
     : '<span class="delivery-badge delivery"><i class="fas fa-truck"></i> Delivery</span>';
@@ -313,7 +319,7 @@ function renderOrderRow(order) {
     }</td>
     <td>R${(order.total || 0).toFixed(2)}</td>
     <td>
-      <span class="status-badge ${displayStatus} ${
+      <span class="status-badge ${displayStatus.toLowerCase()} ${
     order.isCancelled ? "cancelled" : ""
   }">
         ${displayStatus} 
@@ -344,9 +350,9 @@ function renderOrderRow(order) {
                 .map(
                   ([key, value]) => `
                   <option value="${value}" ${
-                    displayStatus === value ? "selected" : ""
+                    (order.orderStatus || order.status) === value ? "selected" : ""
                   }>
-                    ${value}
+                    ${capitalizeStatus(value)}
                   </option>
                 `
                 )
@@ -410,7 +416,7 @@ async function updateOrderStatus(orderId, newStatus) {
     }
 
     await updateDoc(doc(db, COLLECTIONS.ORDERS, orderId), updates);
-    showSuccess(`Order status updated to ${newStatus}`);
+    showSuccess(`Order status updated to ${capitalizeStatus(newStatus)}`);
   } catch (error) {
     console.error("Error updating order status:", error);
     showError("Failed to update order status. Please try again.");
@@ -467,7 +473,7 @@ function showOrderModal(order) {
   const cancellationDetails = order.statusHistory?.find(
     (entry) => entry.status === "cancelled"
   );
-  const displayStatus = order.orderStatus || order.status || "pending";
+  const displayStatus = capitalizeStatus(order.orderStatus || order.status || "pending");
 
   const deliveryInfo = order.isPickup
     ? `<div class="order-details-section">
@@ -495,7 +501,7 @@ function showOrderModal(order) {
       <h3>Order #${order.id || "N/A"}</h3>
       <p><strong>Date:</strong> ${formatDate(order.createdAt)}</p>
       <p><strong>Status:</strong> 
-        <span class="status-badge ${displayStatus} ${
+        <span class="status-badge ${displayStatus.toLowerCase()} ${
     order.isCancelled ? "cancelled" : ""
   }">
           ${displayStatus} 
@@ -598,7 +604,7 @@ function showOrderModal(order) {
           ? order.statusHistory
               .map(
                 (entry) => `
-          <p>${formatDate(entry.changedAt)} - ${entry.status} (by ${
+          <p>${formatDate(entry.changedAt)} - ${capitalizeStatus(entry.status)} (by ${
                   entry.changedBy || "system"
                 })
           ${entry.reason ? ` - ${entry.reason}` : ""}
