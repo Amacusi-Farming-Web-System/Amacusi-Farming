@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Contact Us | Amacusi Trading Business</title>
+
+    <!-- External Libraries -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Open+Sans:wght@400;600&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    />
+    <link rel="stylesheet" href="https://unpkg.com/aos@next/dist/aos.css" />
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="../css/contacts.css" />
+    <link rel="stylesheet" href="../css/index.css" />
+
+  </head>
+
+  <body>
+    <!-- Navigation -->
+    <header>
+      <div class="logo">
+        <img src="../Images/AmacusiLogo.png" alt="Amacusi Trading Business" />
+      </div>
+
+      <!-- Hamburger Button -->
+      <button class="menu-toggle" aria-label="Toggle menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <nav>
+        <ul>
+          <li><a href="../index.html">Home</a></li>
+          <li><a href="Products.html">Products</a></li>
+          <li><a href="about.html">About Us</a></li>
+          <li><a href="Pages/contacts.html" class="active">Contact</a></li>
+          <li><a href="profile.html">My Profile</a></li>
+        </ul>
+      </nav>
+
+      <!-- Icons -->
+      <div class="header-icons">
+        <a href="Pages/profile.html" aria-label="Profile">
+          <i class="fas fa-user"></i>
+        </a>
+        <a href="Pages/cart.html" aria-label="Shopping Cart">
+          <i class="fas fa-shopping-cart"></i>
+          <span class="cart-count">0</span>
+        </a>
+      </div>
+    </header>
+
+    <!-- Contact Section -->
+    <section class="contact-section">
+      <div class="contact-container" data-aos="fade-up">
+        <h1>Contact Us</h1>
+        <p>
+          We'd love to hear from you. Whether you have questions about our
+          products, wholesale orders, or partnerships — feel free to reach out.
+        </p>
+
+        <div class="contact-info">
+          <div class="contact-item">
+            <i class="fas fa-phone"></i>
+            <h3>Phone</h3>
+            <p><a href="tel:+27123456789">+27 12 345 6789</a></p>
+          </div>
+
+          <div class="contact-item">
+            <i class="fas fa-envelope"></i>
+            <h3>Email</h3>
+            <p><a href="mailto:info@amacusi.co.za">info@amacusi.co.za</a></p>
+          </div>
+
+          <div class="contact-item">
+            <i class="fas fa-map-marker-alt"></i>
+            <h3>Location</h3>
+            <p>Mpumalanga, South Africa</p>
+          </div>
+
+          <!-- Directors Contact Info -->
+          <div class="contact-item">
+            <i class="fas fa-user-tie"></i>
+            <h3>Directors</h3>
+            <p>Fezile Habile: <a href="tel:+27714378902">071 437 8902</a></p>
+            <p>Qiniso Habile: <a href="tel:+27713757905">071 375 7905</a></p>
+            <p>Kwazi Habile: <a href="tel:+27718515331">071 851 5331</a></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer-with-bg">
+      <div class="footer-container">
+        <div class="footer-section">
+          <h3>Our Products</h3>
+          <ul>
+            <li><a href="#">Poultry</a></li>
+            <li><a href="#">Beef</a></li>
+            <li><a href="#">Pork</a></li>
+            <li><a href="#">Eggs</a></li>
+            <li><a href="#">Goat Meat (Coming Soon)</a></li>
+          </ul>
+        </div>
+        <div class="footer-section">
+          <h3>Business</h3>
+          <ul>
+            <li><a href="#">Wholesale Orders</a></li>
+            <li><a href="#">Export Inquiries</a></li>
+            <li><a href="#">Investor Relations</a></li>
+          </ul>
+        </div>
+        <div class="footer-section">
+          <h3>Connect With Us</h3>
+          <p><i class="fas fa-map-marker-alt"></i> Mpumalanga, South Africa</p>
+          <p><i class="fas fa-phone"></i> +27 12 345 6789</p>
+          <div class="social-icons">
+            <a href="#"><i class="fab fa-facebook"></i></a>
+            <a href="#"><i class="fab fa-instagram"></i></a>
+            <a href="#"><i class="fab fa-whatsapp"></i></a>
+          </div>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>© 2025 Amacusi Farming. All rights reserved.</p>
+      </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/aos@next/dist/aos.js"></script>
+    <script>
+      AOS.init();
+
+      // Menu functionality
+      const menuToggle = document.querySelector(".menu-toggle");
+      const nav = document.querySelector("nav");
+
+      menuToggle.addEventListener("click", () => {
+        nav.classList.toggle("active");
+        menuToggle.classList.toggle("active");
+        document.body.classList.toggle("no-scroll");
+      });
+
+      document.querySelectorAll("nav a").forEach((link) => {
+        link.addEventListener("click", () => {
+          nav.classList.remove("active");
+          menuToggle.classList.remove("active");
+          document.body.classList.remove("no-scroll");
+        });
+      });
+    </script>
+  </body>
+</html>
