@@ -18,7 +18,7 @@ import {
   getDocs,
   query,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { signOut } from "https://www.paypal.com/sdk/js?client-id=ATakrLwKAcN_2qKEz5gmggEkUlNdZT2oOwPC2m9NV-CpRAb22Rab3kYTaMPkas36s2c2b8UsJTMAukK4&currency=USD"></script>
+// import { signOut } from "https://www.paypal.com/sdk/js?client-id=ATakrLwKAcN_2qKEz5gmggEkUlNdZT2oOwPC2m9NV-CpRAb22Rab3kYTaMPkas36s2c2b8UsJTMAukK4&currency=USD"></script>
 
 // DOM Elements
 const cartItemsList = document.getElementById("cart-items-list");
