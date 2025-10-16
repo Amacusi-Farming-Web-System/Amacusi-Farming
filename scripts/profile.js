@@ -9,6 +9,8 @@ import {
   updateDoc,
   onSnapshot,
   arrayUnion,
+  setDoc,
+  deleteDoc,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
   signOut,
@@ -19,6 +21,7 @@ export class ProfileManager {
   constructor() {
     this.user = null;
     this.orderUnsubscribe = null;
+    this.addressUnsubscribe = null;
     this.initAuthListener();
     this.setupEventListeners();
   }
@@ -29,6 +32,7 @@ export class ProfileManager {
         this.user = user;
         this.loadUserProfile();
         this.loadOrders();
+        this.loadAddresses();
       } else {
         window.location.href = "../Pages/signUp.html";
       }
@@ -58,6 +62,151 @@ export class ProfileManager {
     } catch (error) {
       console.error("Error loading user profile:", error);
       this.showToast("Failed to load profile data", "error");
+    }
+  }
+
+  async loadAddresses() {
+    const addressesList = document.getElementById("addresses-list");
+    addressesList.innerHTML = `<div class="loading-state"><i class="fas fa-spinner fa-spin"></i><p>Loading addresses...</p></div>`;
+
+    try {
+      this.addressUnsubscribe = onSnapshot(
+        query(collection(db, "users", this.user.uid, "addresses")),
+        (querySnapshot) => {
+          if (querySnapshot.empty) {
+            addressesList.innerHTML = `<div class="empty-state"><i class="fas fa-map-marker-alt"></i><p>No saved addresses yet</p><button class="btn btn-primary" id="add-address-btn"><i class="fas fa-plus"></i> Add New Address</button></div>`;
+            this.setupAddressButtonListeners();
+            return;
+          }
+
+          let addressesHtml = "";
+          querySnapshot.forEach((doc) => {
+            const address = doc.data();
+            addressesHtml += this.createAddressCard(address, doc.id);
+          });
+          addressesList.innerHTML = addressesHtml;
+          this.setupAddressButtonListeners();
+        },
+        (error) => {
+          console.error("Error loading addresses:", error);
+          addressesList.innerHTML = `<div class="error-state"><i class="fas fa-exclamation-triangle"></i><p>Failed to load addresses. Please try again later.</p></div>`;
+        }
+      );
+    } catch (error) {
+      console.error("Error loading addresses:", error);
+      addressesList.innerHTML = `<div class="error-state"><i class="fas fa-exclamation-triangle"></i><p>Failed to load addresses. Please try again later.</p></div>`;
+    }
+  }
+
+  createAddressCard(address, addressId) {
+    return `
+      <div class="address-card" data-address-id="${addressId}">
+        <div class="address-header">
+          <h3>${address.label || "Address"}</h3>
+          ${address.isDefault ? '<span class="address-tag">Default</span>' : ""}
+        </div>
+        <p>${address.street || ""}, ${address.city || ""}, ${
+      address.province || ""
+    }, ${address.postalCode || ""}</p>
+        <div class="address-actions">
+          <button class="btn btn-outline edit-address" data-address-id="${addressId}">Edit</button>
+          <button class="btn btn-outline delete-address" data-address-id="${addressId}">Remove</button>
+        </div>
+      </div>
+    `;
+  }
+
+  async saveAddress(e) {
+    e.preventDefault();
+    const addressModal = document.getElementById("address-modal");
+    const addressForm = document.getElementById("address-form");
+    const addressId = addressForm.dataset.addressId || null;
+
+    const addressData = {
+      label: document.getElementById("address-label").value.trim(),
+      street: document.getElementById("street").value.trim(),
+      city: document.getElementById("city").value.trim(),
+      province: document.getElementById("province").value,
+      postalCode: document.getElementById("postal-code").value.trim(),
+      isDefault: document.getElementById("set-default").checked,
+      updatedAt: new Date().toISOString(),
+    };
+
+    try {
+      if (addressData.isDefault) {
+        // Reset other addresses' isDefault to false
+        const addressesQuery = query(
+          collection(db, "users", this.user.uid, "addresses")
+        );
+        const querySnapshot = await getDocs(addressesQuery);
+        querySnapshot.forEach(async (doc) => {
+          await updateDoc(doc.ref, { isDefault: false });
+        });
+      }
+
+      if (addressId) {
+        // Update existing address
+        await updateDoc(
+          doc(db, "users", this.user.uid, "addresses", addressId),
+          addressData
+        );
+        this.showToast("Address updated successfully");
+      } else {
+        // Add new address
+        await setDoc(
+          doc(collection(db, "users", this.user.uid, "addresses")),
+          addressData
+        );
+        this.showToast("Address saved successfully");
+      }
+
+      addressModal.style.display = "none";
+      addressModal.classList.remove("active");
+      addressForm.reset();
+      addressForm.removeAttribute("data-address-id");
+    } catch (error) {
+      console.error("Error saving address:", error);
+      this.showToast("Failed to save address", "error");
+    }
+  }
+
+  async editAddress(addressId) {
+    try {
+      const addressDoc = await getDoc(
+        doc(db, "users", this.user.uid, "addresses", addressId)
+      );
+      if (addressDoc.exists()) {
+        const address = addressDoc.data();
+        document.getElementById("address-label").value = address.label || "";
+        document.getElementById("street").value = address.street || "";
+        document.getElementById("city").value = address.city || "";
+        document.getElementById("province").value = address.province || "";
+        document.getElementById("postal-code").value = address.postalCode || "";
+        document.getElementById("set-default").checked = address.isDefault || false;
+
+        const addressModal = document.getElementById("address-modal");
+        const addressForm = document.getElementById("address-form");
+        addressForm.dataset.addressId = addressId;
+        addressModal.style.display = "block";
+        addressModal.classList.add("active");
+      } else {
+        this.showToast("Address not found", "error");
+      }
+    } catch (error) {
+      console.error("Error loading address for edit:", error);
+      this.showToast("Failed to load address", "error");
+    }
+  }
+
+  async deleteAddress(addressId) {
+    if (confirm("Are you sure you want to delete this address?")) {
+      try {
+        await deleteDoc(doc(db, "users", this.user.uid, "addresses", addressId));
+        this.showToast("Address deleted successfully");
+      } catch (error) {
+        console.error("Error deleting address:", error);
+        this.showToast("Failed to delete address", "error");
+      }
     }
   }
 
@@ -440,20 +589,111 @@ export class ProfileManager {
     });
   }
 
+  setupAddressButtonListeners() {
+    const addressModal = document.getElementById("address-modal");
+    const addressForm = document.getElementById("address-form");
+
+    document.querySelectorAll(".btn#add-address-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        addressForm.reset();
+        addressForm.removeAttribute("data-address-id");
+        addressModal.style.display = "block";
+        addressModal.classList.add("active");
+      });
+    });
+
+    document.querySelectorAll(".edit-address").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const addressId = e.target.dataset.addressId;
+        this.editAddress(addressId);
+      });
+    });
+
+    document.querySelectorAll(".delete-address").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const addressId = e.target.dataset.addressId;
+        this.deleteAddress(addressId);
+      });
+    });
+
+    document.querySelectorAll(".cancel-address").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        addressModal.style.display = "none";
+        addressModal.classList.remove("active");
+        addressForm.reset();
+        addressForm.removeAttribute("data-address-id");
+      });
+    });
+  }
+
   setupEventListeners() {
+    // Ensure profile-menu is always visible and not in a sidebar
+    const profileMenu = document.querySelector(".profile-menu");
+    if (profileMenu) {
+      profileMenu.style.display = "block";
+      profileMenu.style.visibility = "visible";
+      profileMenu.style.opacity = "1";
+      profileMenu.style.position = "static";
+      profileMenu.style.transform = "none";
+      profileMenu.style.right = "auto";
+      profileMenu.style.width = "100%";
+      profileMenu.style.height = "auto";
+      // Log styles for debugging
+      console.log("Profile Menu Initial Styles:", {
+        display: profileMenu.style.display,
+        visibility: profileMenu.style.visibility,
+        opacity: profileMenu.style.opacity,
+        position: profileMenu.style.position,
+        transform: profileMenu.style.transform,
+        right: profileMenu.style.right,
+        width: profileMenu.style.width,
+      });
+    }
+
     document.querySelectorAll(".profile-menu a").forEach((link) => {
       link.addEventListener("click", (e) => {
         if (link.getAttribute("href") === "#") return;
         e.preventDefault();
-        const target = link.getAttribute("href").substring(1);
+        const targetId = link.getAttribute("href").substring(1);
+        const targetSection = document.getElementById(targetId);
+
+        // Update active menu item
         document
           .querySelectorAll(".profile-menu li")
           .forEach((li) => li.classList.remove("active"));
         link.parentElement.classList.add("active");
+
+        // Show all sections initially, then hide non-target sections
         document
           .querySelectorAll(".profile-section")
           .forEach((section) => (section.style.display = "none"));
-        document.getElementById(target).style.display = "block";
+        if (targetSection) {
+          targetSection.style.display = "block";
+          // Smooth scroll to the target section
+          targetSection.scrollIntoView({ behavior: "smooth" });
+        }
+
+        // Ensure profile-menu remains visible and not in a sidebar
+        if (profileMenu) {
+          profileMenu.style.display = "block";
+          profileMenu.style.visibility = "visible";
+          profileMenu.style.opacity = "1";
+          profileMenu.style.position = "static";
+          profileMenu.style.transform = "none";
+          profileMenu.style.right = "auto";
+          profileMenu.style.width = "100%";
+          profileMenu.style.height = "auto";
+          // Log styles after click for debugging
+          console.log("Profile Menu Styles After Click:", {
+            display: profileMenu.style.display,
+            visibility: profileMenu.style.visibility,
+            opacity: profileMenu.style.opacity,
+            position: profileMenu.style.position,
+            transform: profileMenu.style.transform,
+            right: profileMenu.style.right,
+            width: profileMenu.style.width,
+          });
+        }
       });
     });
 
@@ -462,9 +702,21 @@ export class ProfileManager {
       ?.addEventListener("submit", async (e) => {
         e.preventDefault();
         try {
+          let phoneNum = document.getElementById("phone").value.trim();
+          if (phoneNum) {
+            // Normalize to +27 if starts with 0
+            if (/^0[1-9]/.test(phoneNum)) {
+              phoneNum = '+27' + phoneNum.substring(1);
+            }
+            // Validate South African phone number
+            if (!/^(\+27)[6-8][0-9]{8}$/.test(phoneNum)) {
+              this.showToast("Invalid South African phone number. Please enter a valid mobile number starting with +27 or 0, followed by 6-8 and 8 digits.", "error");
+              return;
+            }
+          }
           await updateDoc(doc(db, "users", this.user.uid), {
             displayName: document.getElementById("full-name").value,
-            phoneNumber: document.getElementById("phone").value,
+            phoneNumber: phoneNum,
             updatedAt: new Date(),
           });
           this.showToast("Profile updated successfully");
@@ -474,6 +726,10 @@ export class ProfileManager {
           this.showToast("Failed to update profile", "error");
         }
       });
+
+    document
+      .getElementById("address-form")
+      ?.addEventListener("submit", (e) => this.saveAddress(e));
 
     document
       .getElementById("logout-btn")
@@ -492,6 +748,8 @@ export class ProfileManager {
       btn.addEventListener("click", () => {
         document.getElementById("order-modal").style.display = "none";
         document.getElementById("order-modal").classList.remove("active");
+        document.getElementById("address-modal").style.display = "none";
+        document.getElementById("address-modal").classList.remove("active");
       });
     });
 
@@ -499,6 +757,12 @@ export class ProfileManager {
       if (e.target === document.getElementById("order-modal")) {
         document.getElementById("order-modal").style.display = "none";
         document.getElementById("order-modal").classList.remove("active");
+      }
+      if (e.target === document.getElementById("address-modal")) {
+        document.getElementById("address-modal").style.display = "none";
+        document.getElementById("address-modal").classList.remove("active");
+        document.getElementById("address-form").reset();
+        document.getElementById("address-form").removeAttribute("data-address-id");
       }
     });
   }

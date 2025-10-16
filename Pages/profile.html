@@ -58,7 +58,7 @@
 
     <!-- Profile Content -->
     <main class="profile-container">
-      <div class="profile-sidebar">
+      <div class="profile-content">
         <div class="profile-card">
           <div class="profile-avatar">
             <img
@@ -110,9 +110,7 @@
             </li>
           </ul>
         </nav>
-      </div>
 
-      <div class="profile-content">
         <section id="orders" class="profile-section">
           <div class="section-header">
             <h2>Order History</h2>
@@ -170,16 +168,9 @@
             </button>
           </div>
           <div class="addresses-list" id="addresses-list">
-            <div class="address-card">
-              <div class="address-header">
-                <h3>Primary Address</h3>
-                <span class="address-tag">Default</span>
-              </div>
-              <p id="primary-address">Loading...</p>
-              <div class="address-actions">
-                <button class="btn btn-outline edit-address">Edit</button>
-                <button class="btn btn-outline delete-address">Remove</button>
-              </div>
+            <div class="loading-state">
+              <i class="fas fa-spinner fa-spin"></i>
+              <p>Loading addresses...</p>
             </div>
           </div>
         </section>

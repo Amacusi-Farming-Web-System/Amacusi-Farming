@@ -264,53 +264,6 @@ nav a:hover {
   color: var(--error);
 }
 
-/* Cart Summary */
-.cart-summary {
-  background: var(--white);
-  border-radius: 8px;
-  padding: 1.5rem;
-  box-shadow: var(--shadow-sm);
-  align-self: flex-start;
-  position: sticky;
-  top: 1rem;
-}
-
-.cart-summary h2 {
-  margin-top: 0;
-  margin-bottom: 1.5rem;
-  font-size: 1.5rem;
-}
-
-.summary-details {
-  margin-bottom: 1.5rem;
-}
-
-.summary-row {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 0.8rem;
-}
-
-.summary-row.total {
-  font-weight: 600;
-  font-size: 1.1rem;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border);
-}
-
-.delivery-info {
-  margin-top: 1.5rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--border);
-  font-size: 0.9rem;
-}
-
-.delivery-info h3 {
-  font-size: 1rem;
-  margin-bottom: 0.5rem;
-}
-
 /* Buttons */
 .btn {
   display: inline-block;
@@ -382,6 +335,44 @@ nav a:hover {
   right: 1rem;
   font-size: 1.5rem;
   cursor: pointer;
+}
+
+/* Address Selection Modal */
+.address-card {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  cursor: pointer;
+}
+
+.address-card label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.address-card input[type="radio"] {
+  margin: 0;
+}
+
+.address-details h3 {
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.address-details p {
+  font-size: 0.9rem;
+  color: var(--text-light);
+}
+
+.address-tag {
+  background: var(--primary);
+  color: var(--white);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  margin-left: 0.5rem;
 }
 
 /* Form Groups */
@@ -467,119 +458,41 @@ nav a:hover {
   }
 }
 
-/* Location Modal */
-#location-modal {
-  display: none;
-  position: fixed;
-  z-index: 1000;
-  left: 0;
-  top: 0;
-  width: 100%;
-  height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
-}
-
-.location-modal-content {
-  background-color: #fefefe;
-  margin: 15% auto;
-  padding: 20px;
-  border: 1px solid #888;
-  width: 80%;
-  max-width: 500px;
-  border-radius: 8px;
-}
-
-.close-location-modal {
-  color: #aaa;
-  float: right;
-  font-size: 28px;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-/* Type Selection */
-.type-selection {
-  margin-top: 10px;
-  display: flex;
-  gap: 15px;
-}
-
-.type-selection label {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  cursor: pointer;
-}
-
-.type-selection input[type="radio"] {
-  margin: 0;
-}
-
 /* Payment Modal Specific */
-#card-modal .card-form {
-  margin-top: 20px;
-}
-
-.card-icons {
-  text-align: center;
-  margin-bottom: 20px;
-  font-size: 2em;
-  color: #555;
-}
-
-.card-icons i {
-  margin: 0 10px;
-}
-
-.form-row {
-  display: flex;
-  gap: 15px;
-}
-
-.form-row .form-group {
-  flex: 1;
-}
-
-#card-number {
-  letter-spacing: 1.5px;
-}
-
-#submit-card {
-  width: 100%;
-  margin-top: 20px;
-  padding: 12px;
-}
-
-/* Delivery Option Styles */
-.delivery-option {
+.payment-methods {
   margin: 1rem 0;
-  padding: 1rem;
-  background: var(--gray);
-  border-radius: 4px;
 }
 
-.delivery-option label {
+.payment-method {
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 10px;
-  cursor: pointer;
+}
+
+.payment-method.selected {
+  border-color: var(--primary);
+  background: var(--light);
+}
+
+.payment-method i {
+  font-size: 1.5rem;
+}
+
+.payment-method span {
   font-weight: 500;
 }
 
-.delivery-option input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--primary);
-}
-
-/* Order Summary (ZAR + USD totals) */
+/* Order Summary */
 .order-summary {
   background: #f9f9f9;
   padding: 15px;
   border-radius: 4px;
   margin: 20px 0;
-  max-height: 200px;
-  overflow-y: auto;
 }
 
 .order-summary p {
@@ -592,4 +505,29 @@ nav a:hover {
   font-weight: 600;
   font-size: 1.1rem;
   color: var(--dark-green);
+}
+
+/* Toast Notifications */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--error);
+  color: white;
+  padding: 15px 20px;
+  border-radius: 4px;
+  box-shadow: var(--shadow-md);
+  z-index: 3000;
+  transform: translateY(100px);
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.toast.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.toast.success {
+  background: var(--primary);
 }

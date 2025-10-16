@@ -93,11 +93,28 @@
       </div>
     </main>
 
+    <!-- Address Selection Modal -->
+    <div id="address-selection-modal" class="modal">
+      <div class="modal-content">
+        <span class="close-modal">&times;</span>
+        <h2>Select Delivery Address</h2>
+        <div id="saved-addresses-list">
+          <!-- Saved addresses will be populated here -->
+        </div>
+        <button id="add-new-address-btn" class="btn btn-outline">
+          <i class="fas fa-plus"></i> Enter New Address
+        </button>
+        <button id="confirm-address-selection" class="btn btn-primary" disabled>
+          Confirm Selection
+        </button>
+      </div>
+    </div>
+
     <!-- Address Modal -->
     <div id="address-modal" class="modal">
       <div class="modal-content">
         <span class="close-modal">&times;</span>
-        <h2>Delivery Address</h2>
+        <h2>Enter Delivery Address</h2>
 
         <div class="form-group">
           <label for="street">Street Address</label>
@@ -130,6 +147,13 @@
           </select>
         </div>
 
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="save-address-checkbox" checked />
+            Save this address for future use
+          </label>
+        </div>
+
         <button id="confirm-address" class="btn btn-primary">
           Confirm Address
         </button>
@@ -159,6 +183,10 @@
           <div class="payment-method" data-method="cash">
             <i class="fas fa-money-bill-wave"></i>
             <span>Cash on Delivery</span>
+          </div>
+          <div class="payment-method" data-method="paypal">
+            <i class="fab fa-paypal"></i>
+            <span>PayPal</span>
           </div>
         </div>
 
