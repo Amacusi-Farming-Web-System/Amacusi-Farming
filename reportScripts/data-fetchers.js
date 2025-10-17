@@ -1,7 +1,7 @@
 import { 
     db, 
     COLLECTIONS 
-} from "../../admin/firebase.js";
+} from "../admin/firebase.js";
 import {
     collection,
     getDocs,
