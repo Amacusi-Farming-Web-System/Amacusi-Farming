@@ -18,7 +18,6 @@ import {
   getDocs,
   query,
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-// import { signOut } from "https://www.paypal.com/sdk/js?client-id=ATakrLwKAcN_2qKEz5gmggEkUlNdZT2oOwPC2m9NV-CpRAb22Rab3kYTaMPkas36s2c2b8UsJTMAukK4&currency=USD"></script>
 
 // DOM Elements
 const cartItemsList = document.getElementById("cart-items-list");
@@ -140,6 +139,125 @@ async function validateStockBeforeCheckout() {
   }
 }
 
+// Cart Management Functions
+async function updateCartItemQuantity(itemId, change, specificQuantity = null) {
+  try {
+    const cartId = sessionStorage.getItem("cartId");
+    if (!cartId) return;
+
+    const cartRef = doc(db, "carts", cartId);
+    const cartSnap = await getDoc(cartRef);
+    
+    if (!cartSnap.exists()) return;
+
+    const cartData = cartSnap.data();
+    const items = cartData.items || [];
+    const itemIndex = items.findIndex(item => item.id === itemId);
+    
+    if (itemIndex === -1) return;
+
+    let newQuantity;
+    if (specificQuantity !== null) {
+      newQuantity = specificQuantity;
+    } else {
+      newQuantity = items[itemIndex].quantity + change;
+    }
+
+    // Ensure quantity is at least 1
+    if (newQuantity < 1) newQuantity = 1;
+
+    // Check stock availability
+    const productRef = doc(db, "products", itemId);
+    const productSnap = await getDoc(productRef);
+    
+    if (productSnap.exists()) {
+      const productData = productSnap.data();
+      if (newQuantity > productData.stock) {
+        showToast(`Only ${productData.stock} items available for ${items[itemIndex].name}`);
+        newQuantity = productData.stock;
+      }
+    }
+
+    items[itemIndex].quantity = newQuantity;
+
+    await updateDoc(cartRef, {
+      items: items,
+      updatedAt: serverTimestamp()
+    });
+
+  } catch (error) {
+    console.error("Error updating cart item quantity:", error);
+    showToast("Failed to update quantity. Please try again.");
+  }
+}
+
+async function removeCartItem(itemId) {
+  try {
+    const cartId = sessionStorage.getItem("cartId");
+    if (!cartId) return;
+
+    const cartRef = doc(db, "carts", cartId);
+    const cartSnap = await getDoc(cartRef);
+    
+    if (!cartSnap.exists()) return;
+
+    const cartData = cartSnap.data();
+    const items = cartData.items.filter(item => item.id !== itemId);
+
+    await updateDoc(cartRef, {
+      items: items,
+      updatedAt: serverTimestamp()
+    });
+
+    showToast("Item removed from cart", "success");
+
+  } catch (error) {
+    console.error("Error removing cart item:", error);
+    showToast("Failed to remove item. Please try again.");
+  }
+}
+
+function setupQuantityControls() {
+  // Decrease quantity
+  cartItemsList.addEventListener('click', async (e) => {
+    if (e.target.classList.contains('decrease')) {
+      const itemId = e.target.dataset.id;
+      await updateCartItemQuantity(itemId, -1);
+    }
+  });
+
+  // Increase quantity
+  cartItemsList.addEventListener('click', async (e) => {
+    if (e.target.classList.contains('increase')) {
+      const itemId = e.target.dataset.id;
+      await updateCartItemQuantity(itemId, 1);
+    }
+  });
+
+  // Manual input change
+  cartItemsList.addEventListener('change', async (e) => {
+    if (e.target.classList.contains('quantity-input')) {
+      const itemId = e.target.dataset.id;
+      const newQuantity = parseInt(e.target.value);
+      
+      if (newQuantity < 1) {
+        e.target.value = 1;
+        return;
+      }
+      
+      await updateCartItemQuantity(itemId, 0, newQuantity);
+    }
+  });
+
+  // Remove item
+  cartItemsList.addEventListener('click', async (e) => {
+    if (e.target.closest('.remove-item')) {
+      const itemId = e.target.closest('.remove-item').dataset.id;
+      await removeCartItem(itemId);
+    }
+  });
+}
+
 // Address Management
 async function loadSavedAddresses() {
   if (!userId) return;
@@ -219,22 +337,37 @@ function setupPayPalButton() {
       const subtotal = calculateSubtotal();
       const fee = pickupCheckbox.checked ? 0 : selectedAddress.province.toLowerCase() === "mpumalanga" ? 0 : 100;
       const total = subtotal + fee;
+      
+      // Calculate individual items in USD with proper rounding
+      const items = cart.map((item) => {
+        const unitAmount = (item.price / 15).toFixed(2);
+        return {
+          name: item.name,
+          unit_amount: { currency_code: "USD", value: unitAmount },
+          quantity: item.quantity,
+        };
+      });
+
+      // Calculate totals in USD with proper rounding
+      const itemTotal = items.reduce((sum, item) => {
+        return sum + (parseFloat(item.unit_amount.value) * item.quantity);
+      }, 0).toFixed(2);
+
+      const shippingAmount = (fee / 15).toFixed(2);
+      const totalAmount = (parseFloat(itemTotal) + parseFloat(shippingAmount)).toFixed(2);
+
       return actions.order.create({
         purchase_units: [
           {
             amount: {
               currency_code: "USD",
-              value: (total / 15).toFixed(2), // Convert ZAR to USD (assuming 1 USD = 15 ZAR)
+              value: totalAmount,
               breakdown: {
-                item_total: { currency_code: "USD", value: (subtotal / 15).toFixed(2) },
-                shipping: { currency_code: "USD", value: (fee / 15).toFixed(2) },
+                item_total: { currency_code: "USD", value: itemTotal },
+                shipping: { currency_code: "USD", value: shippingAmount },
               },
             },
-            items: cart.map((item) => ({
-              name: item.name,
-              unit_amount: { currency_code: "USD", value: (item.price / 15).toFixed(2) },
-              quantity: item.quantity,
-            })),
+            items: items,
           },
         ],
       });
@@ -301,6 +434,9 @@ async function initCart() {
       showToast("Failed to load cart. Please refresh.");
     }
   );
+
+  // Set up quantity controls
+  setupQuantityControls();
 }
 
 function renderEmptyCart() {
