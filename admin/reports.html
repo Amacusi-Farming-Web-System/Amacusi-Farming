@@ -21,6 +21,160 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
     <style>
+      /* Data Popup Styles */
+      .chart-popup {
+        display: none;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 25px;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        z-index: 10000;
+        max-width: 500px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+        border: 2px solid #4caf50;
+      }
+
+      .chart-popup-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        z-index: 9999;
+      }
+
+      .chart-popup-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #f0f0f0;
+      }
+
+      .chart-popup-title {
+        font-size: 1.4rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 0;
+      }
+
+      .chart-popup-close {
+        background: #e74c3c;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 35px;
+        height: 35px;
+        cursor: pointer;
+        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.3s ease;
+      }
+
+      .chart-popup-close:hover {
+        background: #c0392b;
+      }
+
+      .chart-popup-content {
+        margin-bottom: 20px;
+      }
+
+      .chart-popup-data {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 4px solid #4caf50;
+      }
+
+      .chart-popup-data h4 {
+        margin: 0 0 10px 0;
+        color: #2c3e50;
+        font-size: 1.1rem;
+      }
+
+      .chart-popup-data-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid #e9ecef;
+      }
+
+      .chart-popup-data-item:last-child {
+        border-bottom: none;
+      }
+
+      .chart-popup-data-label {
+        font-weight: 500;
+        color: #495057;
+      }
+
+      .chart-popup-data-value {
+        font-weight: 600;
+        color: #2c3e50;
+      }
+
+      .chart-popup-source {
+        background: #e8f5e8;
+        padding: 12px;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        color: #27ae60;
+        border-left: 3px solid #27ae60;
+      }
+
+      .chart-popup-source strong {
+        color: #2c3e50;
+      }
+
+      /* Make charts clickable */
+      .chart-container canvas {
+        cursor: pointer;
+      }
+
+      .value-segmentation-info {
+        margin-top: 15px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        border-left: 4px solid #9C27B0;
+      }
+
+      .value-segmentation-info h5 {
+        margin: 0 0 10px 0;
+        color: #2c3e50;
+        font-size: 1rem;
+      }
+
+      .segmentation-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+
+      .segmentation-note {
+        margin: 10px 0 0 0;
+        font-style: italic;
+        color: #666;
+        font-size: 0.85rem;
+        text-align: center;
+        padding: 8px;
+        background: #e8f5e8;
+        border-radius: 4px;
+      }
+
       /* Additional styles for better responsiveness */
       .filter-row {
         display: flex;
@@ -64,6 +218,10 @@
         .half-width {
           width: 100%;
           display: block;
+        }
+
+        .segmentation-grid {
+          grid-template-columns: 1fr;
         }
       }
 
@@ -146,6 +304,58 @@
       .date-range {
         display: flex !important;
         flex-direction: column;
+      }
+
+      /* Drill-down Sections */
+      .drilldown-sections {
+        margin-top: 20px;
+        width: 100%;
+      }
+
+      .drilldown-section {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        margin-bottom: 30px;
+        border: 1px solid #f0f0f0;
+        border-left: 5px solid #4CAF50;
+      }
+
+      .drilldown-section .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #f8f9fa;
+      }
+
+      /* Make summary cards clearly clickable */
+      .summary-card {
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .summary-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+      }
+
+      .summary-card:active {
+        transform: translateY(-1px);
+      }
+
+      /* Loading states for drill-downs */
+      .drilldown-loading {
+        text-align: center;
+        padding: 40px;
+        color: #4CAF50;
+      }
+
+      .drilldown-loading i {
+        font-size: 2rem;
+        margin-bottom: 15px;
       }
     </style>
   </head>
@@ -325,26 +535,29 @@
 
         <!-- Report Content -->
         <section class="report-content">
-          <!-- Sales Report -->
+                    <!-- Sales Report -->
           <div class="report-section" id="salesReport">
             <div class="section-header">
               <h2><i class="fas fa-chart-line"></i> Sales Overview</h2>
               <div class="section-actions">
                 <button class="btn btn-outline export-btn" data-report="sales">
-                  <i class="fas fa-file-export"></i> Export
+                  <i class="fas fa-file-export"></i> Export PDF
                 </button>
               </div>
             </div>
 
             <div class="chart-container">
+              <h3 class="chart-title">Sales Trend Analysis</h3>
               <canvas id="salesTrendChart"></canvas>
             </div>
 
             <div class="chart-container half-width">
+              <h3 class="chart-title">Revenue by Category</h3>
               <canvas id="salesByCategoryChart"></canvas>
             </div>
 
             <div class="chart-container half-width">
+              <h3 class="chart-title">Customer Type Distribution</h3>
               <canvas id="customerTypeChart"></canvas>
             </div>
 
@@ -376,7 +589,7 @@
                   class="btn btn-outline export-btn"
                   data-report="payment"
                 >
-                  <i class="fas fa-file-export"></i> Export
+                  <i class="fas fa-file-export"></i> Export PDF
                 </button>
               </div>
             </div>
@@ -418,7 +631,7 @@
               <h2><i class="fas fa-box-open"></i> Product Performance</h2>
               <div class="section-actions">
                 <button class="btn btn-outline export-btn" data-report="product">
-                  <i class="fas fa-file-export"></i> Export
+                  <i class="fas fa-file-export"></i> Export PDF
                 </button>
               </div>
             </div>
@@ -453,7 +666,7 @@
               <h2><i class="fas fa-users"></i> Customer Insights</h2>
               <div class="section-actions">
                 <button class="btn btn-outline export-btn" data-report="customer">
-                  <i class="fas fa-file-export"></i> Export
+                  <i class="fas fa-file-export"></i> Export PDF
                 </button>
               </div>
             </div>
@@ -469,6 +682,16 @@
             <div class="chart-container half-width">
               <h4>Customer Value Segmentation</h4>
               <canvas id="customerValueSegmentationChart"></canvas>
+              <div class="value-segmentation-info">
+                <h5>Value Segment Definitions:</h5>
+                <div class="segmentation-grid">
+                  <div><strong>High Value:</strong> > R1000 total spent</div>
+                  <div><strong>Medium Value:</strong> R500 - R1000 total spent</div>
+                  <div><strong>Low Value:</strong> < R500 total spent</div>
+                  <div><strong>New/Inactive:</strong> No orders placed</div>
+                </div>
+                <p class="segmentation-note">Click on any segment to view detailed information</p>
+              </div>
             </div>
 
             <div class="chart-container">
@@ -513,7 +736,62 @@
             </div>
           </div>
         </section>
+
+        <!-- Drill-down Sections -->
+        <section class="drilldown-sections" style="display: none;">
+          <!-- New Customers Drill-down -->
+          <div id="newCustomersDrilldown" class="drilldown-section" style="display: none;">
+            <div class="section-header">
+              <h2><i class="fas fa-users"></i> New Customers Analysis</h2>
+              <button class="btn btn-outline" onclick="closeDrilldown('newCustomersDrilldown')">
+                <i class="fas fa-times"></i> Close
+              </button>
+            </div>
+            
+            <div class="table-container">
+              <h3>New Customers in Selected Period</h3>
+              <table class="report-table" id="newCustomersTable">
+                <thead>
+                  <tr>
+                    <th>Customer Name</th>
+                    <th>Email</th>
+                    <th>Signup Date</th>
+                    <th>First Order</th>
+                    <th>Total Orders</th>
+                    <th>Total Spent</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- Will be populated by JavaScript -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
       </main>
+    </div>
+
+    <!-- Chart Data Popup -->
+    <div id="chartPopupOverlay" class="chart-popup-overlay"></div>
+    <div id="chartPopup" class="chart-popup">
+      <div class="chart-popup-header">
+        <h3 class="chart-popup-title">Chart Data Details</h3>
+        <button class="chart-popup-close" id="closeChartPopup">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="chart-popup-content">
+        <div class="chart-popup-data">
+          <h4>Segment Information</h4>
+          <div id="popupDataContent">
+            <!-- Data will be populated here -->
+          </div>
+        </div>
+        <div class="chart-popup-source" id="popupSourceInfo">
+          <!-- Source information will be populated here -->
+        </div>
+      </div>
     </div>
 
     <!-- Import Firebase configuration -->
@@ -570,8 +848,16 @@
       });
     </script>
 
+    <script>
+    // Make chart instances available globally for exports
+    window.salesByCategoryChart = null;
+    window.customerTypeChart = null;
+    window.paymentSuccessChart = null;
+    window.customerValueSegmentationChart = null;
+</script>
+
     <!-- Include the fixed report JavaScript -->
-    <script type="module" src="../admin/report.js"></script>
+    <script type="module" src="../reportScripts/main.js"></script>
     <script type="module" src="../admin/admin.js"></script>
   </body>
 </html>
