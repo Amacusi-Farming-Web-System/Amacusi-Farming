@@ -258,6 +258,129 @@ function setupQuantityControls() {
   });
 }
 
+// Cart Management - OPTIMIZED
+async function initCart() {
+  const cartId = sessionStorage.getItem("cartId");
+  console.log("Initializing cart with ID:", cartId);
+  
+  if (!cartId) {
+    console.log("No cart ID found, rendering empty cart");
+    renderEmptyCart();
+    return;
+  }
+
+  // Show loading state
+  cartItemsList.innerHTML = `
+    <div class="loading-state" style="text-align: center; padding: 2rem;">
+      <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--primary);"></i>
+      <p>Loading your cart...</p>
+    </div>
+  `;
+
+  try {
+    unsubscribeCart = onSnapshot(
+      doc(db, "carts", cartId),
+      (docSnap) => {
+        console.log("Cart snapshot received:", docSnap.exists());
+        if (docSnap.exists()) {
+          const cartData = docSnap.data();
+          console.log("Cart data:", cartData);
+          cart = cartData.items || [];
+          console.log("Cart items:", cart);
+          renderCartItems();
+          updateCartSummary();
+          checkoutBtn.disabled = cart.length === 0;
+        } else {
+          console.log("Cart document does not exist");
+          cart = [];
+          renderEmptyCart();
+        }
+      },
+      (error) => {
+        console.error("Cart snapshot error:", error);
+        showToast("Failed to load cart. Please refresh.");
+        renderEmptyCart();
+      }
+    );
+  } catch (error) {
+    console.error("Error setting up cart listener:", error);
+    showToast("Failed to load cart. Please refresh.");
+    renderEmptyCart();
+  }
+
+  // Set up quantity controls
+  setupQuantityControls();
+}
+
+function renderEmptyCart() {
+  cartItemsList.innerHTML = `
+    <div class="empty-cart">
+      <i class="fas fa-shopping-cart"></i>
+      <p>Your cart is empty</p>
+      <a href="products.html" class="btn">Browse Products</a>
+    </div>
+  `;
+  updateHeaderCartCount(0);
+  checkoutBtn.disabled = true;
+}
+
+function renderCartItems() {
+  console.log("Rendering cart items:", cart);
+  
+  if (!cart || cart.length === 0) {
+    renderEmptyCart();
+    return;
+  }
+
+  let html = "";
+  cart.forEach((item) => {
+    console.log("Rendering item:", item);
+    html += `
+      <div class="cart-item" data-id="${item.id}">
+        <img src="${item.imageUrl || '../Images/default-product.jpg'}" alt="${item.name}" class="cart-item-img" onerror="this.src='../Images/default-product.jpg'" />
+        <div class="cart-item-details">
+          <h3 class="cart-item-name">${item.name}</h3>
+          <p class="cart-item-category">${item.category || "General"}</p>
+          <p class="cart-item-price">R${item.price.toFixed(2)}</p>
+        </div>
+        <div class="cart-item-actions">
+          <div class="quantity-control">
+            <button class="quantity-btn decrease" data-id="${item.id}">-</button>
+            <input type="number" class="quantity-input" value="${item.quantity}" min="1" data-id="${item.id}" />
+            <button class="quantity-btn increase" data-id="${item.id}">+</button>
+          </div>
+          <button class="remove-item" data-id="${item.id}"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>
+    `;
+  });
+  cartItemsList.innerHTML = html;
+  updateCartSummary();
+}
+
+function updateHeaderCartCount(count) {
+  console.log("Updating header cart count:", count);
+  cartCountElements.forEach((el) => {
+    el.textContent = count;
+  });
+}
+
+function updateCartSummary() {
+  const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const subtotal = calculateSubtotal();
+  const isPickup = pickupCheckbox.checked;
+  const fee = isPickup ? 0 : selectedAddress.province.toLowerCase() === "mpumalanga" ? 0 : 100;
+  deliveryFee = fee;
+
+  itemCountElement.textContent = `${itemCount} item${itemCount !== 1 ? "s" : ""}`;
+  subtotalElement.textContent = `R${subtotal.toFixed(2)}`;
+  deliveryElement.textContent = fee === 0 ? "FREE" : `R${fee.toFixed(2)}`;
+  totalElement.textContent = `R${(subtotal + fee).toFixed(2)}`;
+  
+  // FIX: Always update header cart count when cart summary updates
+  updateHeaderCartCount(itemCount);
+}
+
 // Address Management
 async function loadSavedAddresses() {
   if (!userId) return;
@@ -290,7 +413,6 @@ async function loadSavedAddresses() {
     });
     savedAddressesList.innerHTML = addressesHtml;
 
-    // Enable/disable confirm button based on selection
     const addressRadios = savedAddressesList.querySelectorAll('input[name="address"]');
     addressRadios.forEach((radio) => {
       radio.addEventListener("change", () => {
@@ -300,27 +422,6 @@ async function loadSavedAddresses() {
   } catch (error) {
     console.error("Error loading addresses:", error);
     savedAddressesList.innerHTML = '<div class="error-state"><i class="fas fa-exclamation-triangle"></i><p>Failed to load addresses.</p></div>';
-  }
-}
-
-async function saveNewAddress(addressData) {
-  try {
-    if (addressData.saveAddress) {
-      if (addressData.isDefault) {
-        const addressesQuery = query(collection(db, "users", userId, "addresses"));
-        const querySnapshot = await getDocs(addressesQuery);
-        querySnapshot.forEach(async (doc) => {
-          await updateDoc(doc.ref, { isDefault: false });
-        });
-      }
-      await setDoc(doc(collection(db, "users", userId, "addresses")), {
-        ...addressData,
-        updatedAt: new Date().toISOString(),
-      });
-    }
-  } catch (error) {
-    console.error("Error saving address:", error);
-    showToast("Failed to save address.", "error");
   }
 }
 
@@ -401,104 +502,6 @@ function setupPayPalButton() {
     console.error("PayPal button rendering failed:", err);
     showToast("Failed to load PayPal payment option.", "error");
   });
-}
-
-// Cart Management
-async function initCart() {
-  const cartId = sessionStorage.getItem("cartId");
-  if (!cartId) {
-    renderEmptyCart();
-    return;
-  }
-
-  unsubscribeCart = onSnapshot(
-    doc(db, "carts", cartId),
-    (docSnap) => {
-      try {
-        if (docSnap.exists()) {
-          cart = docSnap.data().items || [];
-          renderCartItems();
-          updateCartSummary();
-          checkoutBtn.disabled = cart.length === 0;
-        } else {
-          cart = [];
-          renderEmptyCart();
-        }
-      } catch (err) {
-        console.error("Cart snapshot handler failed:", err);
-        showToast("Failed to load cart. Please refresh.");
-      }
-    },
-    (err) => {
-      console.error("Cart snapshot error:", err);
-      showToast("Failed to load cart. Please refresh.");
-    }
-  );
-
-  // Set up quantity controls
-  setupQuantityControls();
-}
-
-function renderEmptyCart() {
-  cartItemsList.innerHTML = `
-    <div class="empty-cart">
-      <i class="fas fa-shopping-cart"></i>
-      <p>Your cart is empty</p>
-      <a href="products.html" class="btn">Browse Products</a>
-    </div>
-  `;
-  updateHeaderCartCount(0);
-  checkoutBtn.disabled = true;
-}
-
-function renderCartItems() {
-  if (cart.length === 0) {
-    renderEmptyCart();
-    return;
-  }
-
-  let html = "";
-  cart.forEach((item) => {
-    html += `
-      <div class="cart-item" data-id="${item.id}">
-        <img src="${item.imageUrl || '../Images/default-product.jpg'}" alt="${item.name}" class="cart-item-img" />
-        <div class="cart-item-details">
-          <h3 class="cart-item-name">${item.name}</h3>
-          <p class="cart-item-category">${item.category || "General"}</p>
-          <p class="cart-item-price">R${item.price.toFixed(2)}</p>
-        </div>
-        <div class="cart-item-actions">
-          <div class="quantity-control">
-            <button class="quantity-btn decrease" data-id="${item.id}">-</button>
-            <input type="number" class="quantity-input" value="${item.quantity}" min="1" data-id="${item.id}" />
-            <button class="quantity-btn increase" data-id="${item.id}">+</button>
-          </div>
-          <button class="remove-item" data-id="${item.id}"><i class="fas fa-trash"></i></button>
-        </div>
-      </div>
-    `;
-  });
-  cartItemsList.innerHTML = html;
-  updateCartSummary();
-}
-
-function updateHeaderCartCount(count) {
-  cartCountElements.forEach((el) => {
-    el.textContent = count;
-  });
-}
-
-function updateCartSummary() {
-  const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const subtotal = calculateSubtotal();
-  const isPickup = pickupCheckbox.checked;
-  const fee = isPickup ? 0 : selectedAddress.province.toLowerCase() === "mpumalanga" ? 0 : 100;
-  deliveryFee = fee;
-
-  itemCountElement.textContent = `${itemCount} item${itemCount !== 1 ? "s" : ""}`;
-  subtotalElement.textContent = `R${subtotal.toFixed(2)}`;
-  deliveryElement.textContent = fee === 0 ? "FREE" : `R${fee.toFixed(2)}`;
-  totalElement.textContent = `R${(subtotal + fee).toFixed(2)}`;
 }
 
 // Order Processing
@@ -837,3 +840,25 @@ document.addEventListener("DOMContentLoaded", async () => {
     showToast("System error. Please refresh the page.");
   }
 });
+
+// Add missing function
+async function saveNewAddress(addressData) {
+  try {
+    if (addressData.saveAddress) {
+      if (addressData.isDefault) {
+        const addressesQuery = query(collection(db, "users", userId, "addresses"));
+        const querySnapshot = await getDocs(addressesQuery);
+        querySnapshot.forEach(async (doc) => {
+          await updateDoc(doc.ref, { isDefault: false });
+        });
+      }
+      await setDoc(doc(collection(db, "users", userId, "addresses")), {
+        ...addressData,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  } catch (error) {
+    console.error("Error saving address:", error);
+    showToast("Failed to save address.", "error");
+  }
+}
