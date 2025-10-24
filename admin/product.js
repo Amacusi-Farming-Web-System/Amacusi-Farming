@@ -36,6 +36,33 @@ let editMode = false;
 let currentProductId = null;
 let imageFile = null;
 
+// Validation Messages
+const validationMessages = {
+  image: {
+    required: "Product image is required",
+    type: "Please select a valid image file (JPEG, PNG, GIF, WEBP)",
+    size: "Image must be smaller than 20MB",
+    dimensions: "Image should be at least 300x300 pixels for best quality"
+  },
+  description: {
+    required: "Product description is required",
+    minLength: "Description should be at least 20 characters long",
+    maxLength: "Description should not exceed 500 characters"
+  },
+  name: {
+    required: "Product name is required",
+    minLength: "Product name should be at least 3 characters long"
+  },
+  price: {
+    required: "Price is required",
+    min: "Price must be greater than 0"
+  },
+  stock: {
+    required: "Stock quantity is required",
+    min: "Stock quantity cannot be negative"
+  }
+};
+
 // Event Listeners
 addProductBtn.addEventListener("click", openAddProductModal);
 closeModal.addEventListener("click", closeModalFunc);
@@ -43,6 +70,13 @@ cancelBtn.addEventListener("click", closeModalFunc);
 saveProductBtn.addEventListener("click", saveProduct);
 imageUpload.addEventListener("click", () => productImage.click());
 productImage.addEventListener("change", handleImageUpload);
+
+// Form validation event listeners
+document.getElementById('productName').addEventListener('blur', validateName);
+document.getElementById('productDescription').addEventListener('blur', validateDescription);
+document.getElementById('productDescription').addEventListener('input', validateDescription);
+document.getElementById('productPrice').addEventListener('blur', validatePrice);
+document.getElementById('productStock').addEventListener('blur', validateStock);
 
 // Functions
 function openAddProductModal() {
@@ -52,28 +86,210 @@ function openAddProductModal() {
   imagePreview.style.display = "none";
   uploadText.style.display = "block";
   imageFile = null;
+  
+  // Clear any existing validation messages
+  clearAllValidationMessages();
+  
   productModal.style.display = "flex";
 }
 
 function closeModalFunc() {
   productModal.style.display = "none";
+  clearAllValidationMessages();
+}
+
+// Validation Functions
+function validateName() {
+  const nameInput = document.getElementById('productName');
+  const name = nameInput.value.trim();
+  const errorElement = document.getElementById('nameError') || createErrorElement('productName', 'nameError');
+  
+  clearValidationMessage(errorElement);
+  
+  if (!name) {
+    showValidationError(errorElement, validationMessages.name.required);
+    return false;
+  }
+  
+  if (name.length < 3) {
+    showValidationError(errorElement, validationMessages.name.minLength);
+    return false;
+  }
+  
+  showValidationSuccess(errorElement);
+  return true;
+}
+
+function validateDescription() {
+  const descInput = document.getElementById('productDescription');
+  const description = descInput.value.trim();
+  const errorElement = document.getElementById('descriptionError') || createErrorElement('productDescription', 'descriptionError');
+  
+  clearValidationMessage(errorElement);
+  
+  if (!description) {
+    showValidationError(errorElement, validationMessages.description.required);
+    return false;
+  }
+  
+  if (description.length < 20) {
+    showValidationError(errorElement, validationMessages.description.minLength);
+    return false;
+  }
+  
+  if (description.length > 500) {
+    showValidationError(errorElement, validationMessages.description.maxLength);
+    return false;
+  }
+  
+  showValidationSuccess(errorElement);
+  return true;
+}
+
+function validatePrice() {
+  const priceInput = document.getElementById('productPrice');
+  const price = parseFloat(priceInput.value);
+  const errorElement = document.getElementById('priceError') || createErrorElement('productPrice', 'priceError');
+  
+  clearValidationMessage(errorElement);
+  
+  if (isNaN(price)) {
+    showValidationError(errorElement, validationMessages.price.required);
+    return false;
+  }
+  
+  if (price <= 0) {
+    showValidationError(errorElement, validationMessages.price.min);
+    return false;
+  }
+  
+  showValidationSuccess(errorElement);
+  return true;
+}
+
+function validateStock() {
+  const stockInput = document.getElementById('productStock');
+  const stock = parseInt(stockInput.value);
+  const errorElement = document.getElementById('stockError') || createErrorElement('productStock', 'stockError');
+  
+  clearValidationMessage(errorElement);
+  
+  if (isNaN(stock)) {
+    showValidationError(errorElement, validationMessages.stock.required);
+    return false;
+  }
+  
+  if (stock < 0) {
+    showValidationError(errorElement, validationMessages.stock.min);
+    return false;
+  }
+  
+  showValidationSuccess(errorElement);
+  return true;
+}
+
+function validateImage() {
+  const errorElement = document.getElementById('imageError') || createErrorElement('imageUpload', 'imageError');
+  
+  clearValidationMessage(errorElement);
+  
+  if (!imageFile && !editMode) {
+    showValidationError(errorElement, validationMessages.image.required);
+    return false;
+  }
+  
+  if (imageFile) {
+    // Check file type
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(imageFile.type)) {
+      showValidationError(errorElement, validationMessages.image.type);
+      return false;
+    }
+    
+    // Check file size (20MB max)
+    if (imageFile.size > 20 * 1024 * 1024) {
+      showValidationError(errorElement, validationMessages.image.size);
+      return false;
+    }
+    
+    // Check image dimensions (client-side check)
+    const img = new Image();
+    img.onload = function() {
+      if (this.width < 300 || this.height < 300) {
+        const dimensionError = document.getElementById('imageError');
+        if (dimensionError) {
+          dimensionError.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${validationMessages.image.dimensions} (Current: ${this.width}x${this.height})`;
+          dimensionError.style.display = 'block';
+          dimensionError.className = 'validation-error warning';
+        }
+      }
+    };
+    img.src = URL.createObjectURL(imageFile);
+  }
+  
+  showValidationSuccess(errorElement);
+  return true;
+}
+
+// Validation Helper Functions
+function createErrorElement(afterElementId, errorElementId) {
+  const afterElement = document.getElementById(afterElementId);
+  const errorElement = document.createElement('div');
+  errorElement.id = errorElementId;
+  errorElement.className = 'validation-error';
+  afterElement.parentNode.insertBefore(errorElement, afterElement.nextSibling);
+  return errorElement;
+}
+
+function showValidationError(errorElement, message) {
+  errorElement.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+  errorElement.style.display = 'block';
+  errorElement.className = 'validation-error error';
+}
+
+function showValidationSuccess(errorElement) {
+  errorElement.innerHTML = `<i class="fas fa-check-circle"></i> Valid`;
+  errorElement.style.display = 'block';
+  errorElement.className = 'validation-error success';
+}
+
+function clearValidationMessage(errorElement) {
+  errorElement.style.display = 'none';
+  errorElement.innerHTML = '';
+}
+
+function clearAllValidationMessages() {
+  const validationErrors = document.querySelectorAll('.validation-error');
+  validationErrors.forEach(error => {
+    error.style.display = 'none';
+    error.innerHTML = '';
+  });
+}
+
+function validateAllFields() {
+  const isNameValid = validateName();
+  const isDescriptionValid = validateDescription();
+  const isPriceValid = validatePrice();
+  const isStockValid = validateStock();
+  const isImageValid = validateImage();
+  const isCategoryValid = document.getElementById('productCategory').value !== '';
+
+  if (!isCategoryValid) {
+    const categoryError = document.getElementById('categoryError') || createErrorElement('productCategory', 'categoryError');
+    showValidationError(categoryError, 'Please select a product category');
+  } else {
+    const categoryError = document.getElementById('categoryError');
+    if (categoryError) {
+      showValidationSuccess(categoryError);
+    }
+  }
+
+  return isNameValid && isDescriptionValid && isPriceValid && isStockValid && isImageValid && isCategoryValid;
 }
 
 function handleImageUpload(e) {
   const file = e.target.files[0];
   if (!file) return;
-
-  // Validate file type
-  if (!file.type.match("image.*")) {
-    alert("Please select an image file (JPEG, PNG, GIF)");
-    return;
-  }
-
-  // Validate file size (5MB max)
-  if (file.size > 20 * 1024 * 1024) {
-    alert("Image must be smaller than 20MB");
-    return;
-  }
 
   imageFile = file;
   const reader = new FileReader();
@@ -86,6 +302,9 @@ function handleImageUpload(e) {
     imagePreview.style.maxWidth = "100%";
     imagePreview.style.maxHeight = "200px";
     imagePreview.style.objectFit = "contain";
+    
+    // Validate the image after loading
+    setTimeout(() => validateImage(), 100);
   };
   reader.readAsDataURL(file);
 }
@@ -129,6 +348,12 @@ async function uploadImage(file) {
 }
 
 async function saveProduct() {
+  // Validate all fields before proceeding
+  if (!validateAllFields()) {
+    showToast("Please fix all validation errors before saving", "error");
+    return;
+  }
+
   // Get form values
   const productName = document.getElementById("productName").value.trim();
   const productCategory = document.getElementById("productCategory").value;
@@ -140,17 +365,6 @@ async function saveProduct() {
     .getElementById("productDescription")
     .value.trim();
   const productStatus = document.getElementById("productStatus").value;
-
-  // Validate inputs
-  if (
-    !productName ||
-    !productCategory ||
-    isNaN(productPrice) ||
-    isNaN(productStock)
-  ) {
-    alert("Please fill in all required fields with valid values");
-    return;
-  }
 
   // Disable button during save
   saveProductBtn.disabled = true;
@@ -167,6 +381,12 @@ async function saveProduct() {
         saveProductBtn.disabled = false;
         saveProductBtn.innerHTML = '<i class="fas fa-save"></i> Save Product';
         return;
+      }
+    } else if (editMode && currentProductId) {
+      // Keep existing image if editing and no new image selected
+      const existingProduct = await getDoc(doc(db, "products", currentProductId));
+      if (existingProduct.exists()) {
+        imageUrl = existingProduct.data().imageUrl || "";
       }
     }
 
@@ -310,6 +530,15 @@ function editProduct(id, product) {
     uploadText.style.display = "block";
   }
 
+  // Validate all fields when editing
+  setTimeout(() => {
+    validateName();
+    validateDescription();
+    validatePrice();
+    validateStock();
+    validateImage();
+  }, 100);
+
   productModal.style.display = "flex";
 }
 
@@ -363,6 +592,95 @@ document.addEventListener("DOMContentLoaded", () => {
       color: #e74c3c;
       font-weight: bold;
     }
+    
+    /* Validation Styles */
+    .validation-error {
+      display: none;
+      padding: 8px 12px;
+      margin-top: 5px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+    
+    .validation-error.error {
+      background-color: #ffebee;
+      color: #c62828;
+      border-left: 3px solid #c62828;
+    }
+    
+    .validation-error.success {
+      background-color: #e8f5e9;
+      color: #2e7d32;
+      border-left: 3px solid #2e7d32;
+    }
+    
+    .validation-error.warning {
+      background-color: #fff3e0;
+      color: #ef6c00;
+      border-left: 3px solid #ef6c00;
+    }
+    
+    .validation-error i {
+      margin-right: 5px;
+    }
+    
+    /* Form field styling for validation states */
+    .form-control.error {
+      border-color: #c62828;
+      box-shadow: 0 0 0 2px rgba(198, 40, 40, 0.1);
+    }
+    
+    .form-control.success {
+      border-color: #2e7d32;
+      box-shadow: 0 0 0 2px rgba(46, 125, 50, 0.1);
+    }
+    
+    .file-upload.error {
+      border-color: #c62828;
+      background-color: rgba(198, 40, 40, 0.05);
+    }
+    
+    .file-upload.success {
+      border-color: #2e7d32;
+      background-color: rgba(46, 125, 50, 0.05);
+    }
+    
+    /* Character counter for description */
+    .char-counter {
+      text-align: right;
+      font-size: 0.75rem;
+      color: #666;
+      margin-top: 5px;
+    }
+    
+    .char-counter.warning {
+      color: #ef6c00;
+    }
+    
+    .char-counter.error {
+      color: #c62828;
+    }
   `;
   document.head.appendChild(style);
+
+  // Add character counter for description
+  const descriptionInput = document.getElementById('productDescription');
+  const charCounter = document.createElement('div');
+  charCounter.className = 'char-counter';
+  charCounter.textContent = '0/500';
+  descriptionInput.parentNode.insertBefore(charCounter, descriptionInput.nextSibling);
+
+  descriptionInput.addEventListener('input', function() {
+    const length = this.value.length;
+    charCounter.textContent = `${length}/500`;
+    
+    if (length > 450 && length <= 500) {
+      charCounter.className = 'char-counter warning';
+    } else if (length > 500) {
+      charCounter.className = 'char-counter error';
+    } else {
+      charCounter.className = 'char-counter';
+    }
+  });
 });

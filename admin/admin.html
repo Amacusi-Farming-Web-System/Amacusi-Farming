@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Amacusi Farming - Admin Dashboard</title>
+    <title>Amacusi Farming - Manage Products</title>
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
@@ -28,7 +28,7 @@
           <ul>
             <li>
               <a href="#" class="active"
-                ><i class="fas fa-tachometer-alt"></i> Manage Products</a
+                ><i class="fas fa-tachometer-alt"></i> Dashboard</a
               >
             </li>
             <li>
@@ -59,10 +59,10 @@
       <!-- Main Content -->
       <main class="main-content">
         <div class="admin-header">
-          <h1>Product Management</h1>
+          <h1>Manage Products</h1>
 
           <div class="admin-user">
-            <img src="Images/log_8801574.png" alt="Admin User" />
+            <img src="../Images/log_8801574.png" alt="Admin User" />
             <div class="admin-user-info">
               <h4>Admin User</h4>
               <p>Super Admin</p>
@@ -157,6 +157,7 @@
                   id="productName"
                   class="form-control"
                   required
+                  placeholder="Enter product name (min. 3 characters)"
                 />
               </div>
 
@@ -182,6 +183,7 @@
                   min="0"
                   step="0.01"
                   required
+                  placeholder="0.00"
                 />
               </div>
 
@@ -193,6 +195,7 @@
                   class="form-control"
                   min="0"
                   required
+                  placeholder="0"
                 />
               </div>
             </div>
@@ -203,6 +206,8 @@
                 id="productDescription"
                 class="form-control"
                 rows="3"
+                required
+                placeholder="Enter product description (20-500 characters)"
               ></textarea>
             </div>
 
@@ -210,7 +215,7 @@
               <label>Product Image</label>
               <div class="file-upload" id="imageUpload">
                 <i class="fas fa-cloud-upload-alt"></i>
-                <p id="uploadText">Click to upload product image</p>
+                <p id="uploadText">Click to upload product image (required)</p>
                 <input
                   type="file"
                   id="productImage"
