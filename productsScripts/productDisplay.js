@@ -361,10 +361,10 @@ export class ProductDisplay {
 
   formatCategory(category) {
     const categoryMap = {
-      poultry: "Chicken",
-      beef: "Beef",
-      pork: "Pork",
-      eggs: "Eggs",
+      Poultry: "Chicken",
+      Beef: "Beef",
+      Pork: "Pork",
+      Eggs: "Eggs",
     };
     return categoryMap[category] || category;
   }
