@@ -129,6 +129,48 @@ nav a.active::after {
   transform: translateY(-2px);
 }
 
+/* Fix Cart Icon Positioning */
+.header-icons a[aria-label="Shopping Cart"] {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 8px;
+}
+
+.cart-count {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: var(--primary);
+  color: var(--white);
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 0.7rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  border: 2px solid var(--white);
+  transform: translate(25%, -25%);
+}
+
+/* Ensure the cart icon has proper spacing */
+.header-icons .fa-shopping-cart {
+  font-size: 1.3rem;
+  margin-right: 0;
+}
+
+/* Hover effects for cart icon */
+.header-icons a[aria-label="Shopping Cart"]:hover .fa-shopping-cart {
+  color: var(--primary);
+}
+
+.header-icons a[aria-label="Shopping Cart"]:hover .cart-count {
+  background: var(--primary-dark);
+  transform: translate(25%, -25%) scale(1.1);
+}
+
 /* Mobile Menu Toggle */
 .menu-toggle {
   display: none;
@@ -205,6 +247,22 @@ nav a.active::after {
   nav a.active::after {
     display: none;
   }
+
+  /* Mobile cart icon adjustments */
+  .header-icons a[aria-label="Shopping Cart"] {
+    padding: 6px;
+  }
+  
+  .cart-count {
+    width: 16px;
+    height: 16px;
+    font-size: 0.6rem;
+    border-width: 1.5px;
+  }
+  
+  .header-icons .fa-shopping-cart {
+    font-size: 1.1rem;
+  }
 }
 
 /* Prevent background scroll when menu open */
@@ -221,22 +279,6 @@ nav a.active::after {
 }
 .menu-toggle.active span:nth-child(3) {
   transform: rotate(-45deg) translate(5px, -5px);
-}
-
-.cart-count {
-  position: absolute;
-  top: -8px;
-  right: -10px;
-  background: var(--primary);
-  color: var(--white);
-  border-radius: 50%;
-  width: 18px;
-  height: 18px;
-  font-size: 0.7rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
 }
 
 /* Profile Hero */
