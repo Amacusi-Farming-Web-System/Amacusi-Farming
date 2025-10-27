@@ -359,26 +359,33 @@ function renderCartItems() {
 }
 
 function updateHeaderCartCount(count) {
-  console.log("Updating header cart count:", count);
-  cartCountElements.forEach((el) => {
-    el.textContent = count;
-  });
+    console.log("Updating header cart count:", count);
+    
+    // Update all cart count elements on the current page
+    const cartCountElements = document.querySelectorAll('.cart-count');
+    cartCountElements.forEach((el) => {
+        el.textContent = count;
+    });
+    
+    // Sync with session storage for cross-page consistency
+    sessionStorage.setItem('cartItemCount', count);
 }
 
 function updateCartSummary() {
-  const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const subtotal = calculateSubtotal();
-  const isPickup = pickupCheckbox.checked;
-  const fee = isPickup ? 0 : selectedAddress.province.toLowerCase() === "mpumalanga" ? 0 : 100;
-  deliveryFee = fee;
+    const itemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+    const subtotal = calculateSubtotal();
+    const isPickup = pickupCheckbox.checked;
+    const fee = isPickup ? 0 : selectedAddress.province.toLowerCase() === "mpumalanga" ? 0 : 100;
+    deliveryFee = fee;
 
-  itemCountElement.textContent = `${itemCount} item${itemCount !== 1 ? "s" : ""}`;
-  subtotalElement.textContent = `R${subtotal.toFixed(2)}`;
-  deliveryElement.textContent = fee === 0 ? "FREE" : `R${fee.toFixed(2)}`;
-  totalElement.textContent = `R${(subtotal + fee).toFixed(2)}`;
-  
-  // FIX: Always update header cart count when cart summary updates
-  updateHeaderCartCount(itemCount);
+    itemCountElement.textContent = `${itemCount} item${itemCount !== 1 ? "s" : ""}`;
+    subtotalElement.textContent = `R${subtotal.toFixed(2)}`;
+    deliveryElement.textContent = fee === 0 ? "FREE" : `R${fee.toFixed(2)}`;
+    totalElement.textContent = `R${(subtotal + fee).toFixed(2)}`;
+    
+    // Update header cart count AND session storage
+    updateHeaderCartCount(itemCount);
+    sessionStorage.setItem('cartItemCount', itemCount);
 }
 
 // Address Management

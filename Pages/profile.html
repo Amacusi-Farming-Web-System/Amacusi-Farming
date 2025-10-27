@@ -394,5 +394,50 @@
         });
       });
     </script>
+    <!-- Add this right before closing </body> tag -->
+<script type="module">
+import { db } from "../logInScripts/firebaseAuth.js";
+import { doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+document.addEventListener('DOMContentLoaded', function() {
+    const cartCountElements = document.querySelectorAll('.cart-count');
+    
+    function updateCartCount(count) {
+        cartCountElements.forEach(element => {
+            element.textContent = count;
+        });
+    }
+
+    const cartId = sessionStorage.getItem('cartId');
+    
+    if (!cartId) {
+        updateCartCount(0);
+        return;
+    }
+
+    // Listen for cart changes
+    const unsubscribe = onSnapshot(doc(db, "carts", cartId), 
+        (docSnap) => {
+            if (docSnap.exists()) {
+                const cartData = docSnap.data();
+                const itemCount = cartData.items ? 
+                    cartData.items.reduce((sum, item) => sum + item.quantity, 0) : 0;
+                updateCartCount(itemCount);
+                // Store in session storage for consistency
+                sessionStorage.setItem('cartItemCount', itemCount);
+            } else {
+                updateCartCount(0);
+                sessionStorage.setItem('cartItemCount', 0);
+            }
+        },
+        (error) => {
+            console.error("Cart counter error:", error);
+            // Fallback to session storage
+            const storedCount = sessionStorage.getItem('cartItemCount');
+            updateCartCount(storedCount ? parseInt(storedCount) : 0);
+        }
+    );
+});
+</script>
   </body>
 </html>
