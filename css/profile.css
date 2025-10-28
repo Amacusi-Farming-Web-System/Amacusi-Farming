@@ -129,20 +129,20 @@ nav a.active::after {
   transform: translateY(-2px);
 }
 
-/* Fix Cart Icon Positioning */
+/* Fix cart icon and count alignment */
 .header-icons a[aria-label="Shopping Cart"] {
   position: relative;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  padding: 8px;
+  justify-content: center;
 }
 
 .cart-count {
   position: absolute;
-  top: 0;
-  right: 0;
-  background: var(--primary);
-  color: var(--white);
+  top: -8px;
+  right: -10px;
+  background: #4caf50;
+  color: white;
   border-radius: 50%;
   width: 18px;
   height: 18px;
@@ -150,10 +150,9 @@ nav a.active::after {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
-  border: 2px solid var(--white);
-  transform: translate(25%, -25%);
+  font-weight: bold;
 }
+
 
 /* Ensure the cart icon has proper spacing */
 .header-icons .fa-shopping-cart {
